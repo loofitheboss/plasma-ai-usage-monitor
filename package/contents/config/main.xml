@@ -254,6 +254,20 @@
     </group>
 
     <group name="Subscriptions">
+        <!-- Browser Sync (experimental) -->
+        <entry name="browserSyncEnabled" type="Bool">
+            <default>false</default>
+            <label>Enable experimental browser cookie sync for real-time usage data</label>
+        </entry>
+        <entry name="browserSyncBrowser" type="Int">
+            <default>0</default>
+            <label>Browser type: 0=Firefox, 1=Chrome (not supported), 2=Chromium (not supported)</label>
+        </entry>
+        <entry name="browserSyncInterval" type="Int">
+            <default>300</default>
+            <label>Browser sync refresh interval in seconds</label>
+        </entry>
+
         <!-- Claude Code -->
         <entry name="claudeCodeEnabled" type="Bool">
             <default>false</default>

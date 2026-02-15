@@ -6,8 +6,9 @@ import org.kde.plasma.extras as PlasmaExtras
 import org.kde.kirigami as Kirigami
 
 /**
- * Card component for displaying subscription tool usage (Claude Code, Codex, Copilot).
- * Shows usage count vs limit with progress bars and time-until-reset countdown.
+ * Full-dashboard card for subscription tool usage (Claude Code, Codex, Copilot).
+ * Shows detailed usage data: primary/secondary limits, session info, extra usage,
+ * tertiary limits, credits, subscription cost, and sync status.
  */
 ColumnLayout {
     id: toolCard
@@ -62,7 +63,7 @@ ColumnLayout {
             }
             spacing: Kirigami.Units.mediumSpacing
 
-            // Header row
+            // ═══ Header row ═══
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
@@ -102,6 +103,23 @@ ColumnLayout {
                         text: toolCard.monitor?.planTier ?? ""
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                         color: toolCard.toolColor
+                    }
+                }
+
+                // Subscription cost badge
+                Rectangle {
+                    visible: toolCard.monitor?.hasSubscriptionCost ?? false
+                    width: costLabel.implicitWidth + Kirigami.Units.smallSpacing * 2
+                    height: costLabel.implicitHeight + Kirigami.Units.smallSpacing
+                    radius: height / 2
+                    color: Qt.alpha(Kirigami.Theme.textColor, 0.08)
+
+                    PlasmaComponents.Label {
+                        id: costLabel
+                        anchors.centerIn: parent
+                        text: "$" + (toolCard.monitor?.subscriptionCost ?? 0).toFixed(0) + "/mo"
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.7
                     }
                 }
 
@@ -159,7 +177,48 @@ ColumnLayout {
                 visible: !toolCard.collapsed && (toolCard.monitor?.installed ?? false)
             }
 
-            // Primary usage bar
+            // ═══ Session info (Claude: current session % used) ═══
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: !toolCard.collapsed && (toolCard.monitor?.hasSessionInfo ?? false)
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.Label {
+                        text: i18n("Current session")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.7
+                    }
+                    Item { Layout.fillWidth: true }
+                    PlasmaComponents.Label {
+                        text: Math.round(toolCard.monitor?.sessionPercentUsed ?? 0) + "% " + i18n("used")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        font.bold: true
+                        color: usageColor(toolCard.monitor?.sessionPercentUsed ?? 0)
+                    }
+                }
+
+                QQC2.ProgressBar {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 4
+                    from: 0; to: 100
+                    value: toolCard.monitor?.sessionPercentUsed ?? 0
+
+                    background: Rectangle {
+                        implicitHeight: 4; radius: 2
+                        color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+                    }
+                    contentItem: Rectangle {
+                        width: parent.visualPosition * parent.width
+                        height: 4; radius: 2
+                        color: usageColor(toolCard.monitor?.sessionPercentUsed ?? 0)
+                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+                    }
+                }
+            }
+
+            // ═══ Primary usage bar ═══
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: !toolCard.collapsed && (toolCard.monitor?.installed ?? false)
@@ -190,36 +249,39 @@ ColumnLayout {
                     value: Math.min(toolCard.monitor?.usageCount ?? 0, toolCard.monitor?.usageLimit ?? 1)
 
                     background: Rectangle {
-                        implicitHeight: 6
-                        radius: 3
+                        implicitHeight: 6; radius: 3
                         color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
                     }
 
                     contentItem: Rectangle {
                         width: parent.visualPosition * parent.width
-                        height: 6
-                        radius: 3
+                        height: 6; radius: 3
                         color: usageColor(toolCard.monitor?.percentUsed ?? 0)
-
-                        Behavior on width {
-                            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
-                        }
-                        Behavior on color {
-                            ColorAnimation { duration: 300 }
-                        }
+                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+                        Behavior on color { ColorAnimation { duration: 300 } }
                     }
                 }
 
-                // Percentage text
-                PlasmaComponents.Label {
-                    text: Math.round(toolCard.monitor?.percentUsed ?? 0) + "% " + i18n("used")
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    opacity: 0.5
-                    color: usageColor(toolCard.monitor?.percentUsed ?? 0)
+                // Percentage + remaining text
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.Label {
+                        text: Math.round(toolCard.monitor?.percentUsed ?? 0) + "% " + i18n("used")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.5
+                        color: usageColor(toolCard.monitor?.percentUsed ?? 0)
+                    }
+                    Item { Layout.fillWidth: true }
+                    PlasmaComponents.Label {
+                        visible: (toolCard.monitor?.usageLimit ?? 0) > 0
+                        text: Math.max(0, (toolCard.monitor?.usageLimit ?? 0) - (toolCard.monitor?.usageCount ?? 0)) + " " + i18n("remaining")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.4
+                    }
                 }
             }
 
-            // Secondary usage bar (e.g., weekly for Claude Code)
+            // ═══ Secondary usage bar (e.g., weekly for Claude Code / Codex) ═══
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: !toolCard.collapsed && (toolCard.monitor?.installed ?? false)
@@ -251,28 +313,189 @@ ColumnLayout {
                     value: Math.min(toolCard.monitor?.secondaryUsageCount ?? 0, toolCard.monitor?.secondaryUsageLimit ?? 1)
 
                     background: Rectangle {
-                        implicitHeight: 6
-                        radius: 3
+                        implicitHeight: 6; radius: 3
                         color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
                     }
 
                     contentItem: Rectangle {
                         width: parent.visualPosition * parent.width
-                        height: 6
-                        radius: 3
+                        height: 6; radius: 3
                         color: usageColor(toolCard.monitor?.secondaryPercentUsed ?? 0)
+                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+                        Behavior on color { ColorAnimation { duration: 300 } }
+                    }
+                }
 
-                        Behavior on width {
-                            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+                // Secondary reset info
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.Label {
+                        text: Math.round(toolCard.monitor?.secondaryPercentUsed ?? 0) + "% " + i18n("used")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.4
+                        color: usageColor(toolCard.monitor?.secondaryPercentUsed ?? 0)
+                    }
+                    Item { Layout.fillWidth: true }
+                    PlasmaComponents.Label {
+                        visible: (toolCard.monitor?.secondaryTimeUntilReset ?? "") !== ""
+                        text: i18n("Resets in %1", toolCard.monitor?.secondaryTimeUntilReset ?? "")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.4
+                    }
+                }
+            }
+
+            // ═══ Tertiary limit (e.g., Codex code review) ═══
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: !toolCard.collapsed && (toolCard.monitor?.hasTertiaryLimit ?? false)
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.Label {
+                        text: toolCard.monitor?.tertiaryPeriodLabel ?? ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.7
+                    }
+                    Item { Layout.fillWidth: true }
+                    PlasmaComponents.Label {
+                        text: Math.round(toolCard.monitor?.tertiaryPercentRemaining ?? 0) + "% " + i18n("remaining")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        font.bold: true
+                        color: usageColor(100 - (toolCard.monitor?.tertiaryPercentRemaining ?? 100))
+                    }
+                }
+
+                QQC2.ProgressBar {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 4
+                    from: 0; to: 100
+                    value: toolCard.monitor?.tertiaryPercentRemaining ?? 0
+
+                    background: Rectangle {
+                        implicitHeight: 4; radius: 2
+                        color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+                    }
+                    contentItem: Rectangle {
+                        width: parent.visualPosition * parent.width
+                        height: 4; radius: 2
+                        color: Kirigami.Theme.positiveTextColor
+                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+                    }
+                }
+
+                PlasmaComponents.Label {
+                    visible: toolCard.monitor?.tertiaryResetDate?.getTime() > 0
+                    text: i18n("Resets %1", Qt.formatDate(toolCard.monitor?.tertiaryResetDate, "MMM d"))
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    opacity: 0.4
+                }
+            }
+
+            // ═══ Extra usage / spending (Claude) ═══
+            Rectangle {
+                Layout.fillWidth: true
+                visible: !toolCard.collapsed && (toolCard.monitor?.hasExtraUsage ?? false)
+                height: extraUsageCol.implicitHeight + Kirigami.Units.smallSpacing * 2
+                radius: Kirigami.Units.cornerRadius
+                color: Qt.alpha(Kirigami.Theme.neutralTextColor, 0.08)
+                border.width: 1
+                border.color: Qt.alpha(Kirigami.Theme.neutralTextColor, 0.15)
+
+                ColumnLayout {
+                    id: extraUsageCol
+                    anchors {
+                        fill: parent
+                        margins: Kirigami.Units.smallSpacing
+                    }
+                    spacing: Kirigami.Units.smallSpacing
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        PlasmaComponents.Label {
+                            text: i18n("Extra usage")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            font.bold: true
+                            opacity: 0.7
                         }
-                        Behavior on color {
-                            ColorAnimation { duration: 300 }
+                        Item { Layout.fillWidth: true }
+                        PlasmaComponents.Label {
+                            text: {
+                                var sym = toolCard.monitor?.currencySymbol ?? "$";
+                                var spent = (toolCard.monitor?.extraUsageSpent ?? 0).toFixed(2);
+                                var limit = (toolCard.monitor?.extraUsageLimit ?? 0).toFixed(0);
+                                return sym + spent + " / " + sym + limit;
+                            }
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            font.bold: true
+                        }
+                    }
+
+                    QQC2.ProgressBar {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 4
+                        from: 0; to: 100
+                        value: toolCard.monitor?.extraUsagePercent ?? 0
+
+                        background: Rectangle {
+                            implicitHeight: 4; radius: 2
+                            color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+                        }
+                        contentItem: Rectangle {
+                            width: parent.visualPosition * parent.width
+                            height: 4; radius: 2
+                            color: usageColor(toolCard.monitor?.extraUsagePercent ?? 0)
+                            Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        PlasmaComponents.Label {
+                            text: Math.round(toolCard.monitor?.extraUsagePercent ?? 0) + "% " + i18n("used")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.4
+                        }
+                        Item { Layout.fillWidth: true }
+                        PlasmaComponents.Label {
+                            visible: toolCard.monitor?.extraUsageResetDate?.getTime() > 0
+                            text: i18n("Resets %1", Qt.formatDate(toolCard.monitor?.extraUsageResetDate, "MMM d"))
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.4
                         }
                     }
                 }
             }
 
-            // Time until reset
+            // ═══ Remaining credits (Codex) ═══
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !toolCard.collapsed && (toolCard.monitor?.hasCredits ?? false)
+                spacing: Kirigami.Units.smallSpacing
+
+                Kirigami.Icon {
+                    source: "wallet-open"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    opacity: 0.6
+                }
+                PlasmaComponents.Label {
+                    text: i18n("Remaining credits:")
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    opacity: 0.7
+                }
+                PlasmaComponents.Label {
+                    text: "$" + (toolCard.monitor?.remainingCredits ?? 0).toFixed(2)
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    font.bold: true
+                    color: (toolCard.monitor?.remainingCredits ?? 0) <= 0
+                           ? Kirigami.Theme.negativeTextColor
+                           : Kirigami.Theme.textColor
+                }
+            }
+
+            // ═══ Time until reset ═══
             RowLayout {
                 Layout.fillWidth: true
                 visible: !toolCard.collapsed && (toolCard.monitor?.installed ?? false)
@@ -293,16 +516,27 @@ ColumnLayout {
 
                 Item { Layout.fillWidth: true }
 
+                // Sync status badge
+                PlasmaComponents.Label {
+                    visible: (toolCard.monitor?.syncStatus ?? "") !== ""
+                             && toolCard.monitor?.syncStatus !== "idle"
+                    text: toolCard.monitor?.syncStatus ?? ""
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    opacity: 0.4
+                    font.italic: true
+                }
+
                 // Last activity
                 PlasmaComponents.Label {
                     visible: toolCard.monitor?.lastActivity?.getTime() > 0
+                             && (toolCard.monitor?.syncStatus ?? "") === ""
                     text: i18n("Last: %1", formatRelativeTime(toolCard.monitor?.lastActivity))
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
                     opacity: 0.4
                 }
             }
 
-            // Limit reached warning
+            // ═══ Limit reached warning ═══
             Rectangle {
                 Layout.fillWidth: true
                 visible: !toolCard.collapsed && (toolCard.monitor?.limitReached ?? false)
@@ -326,13 +560,27 @@ ColumnLayout {
                 }
             }
 
-            // Manual increment button (for tools where auto-detection isn't perfect)
+            // ═══ Action buttons ═══
             RowLayout {
                 Layout.fillWidth: true
                 visible: !toolCard.collapsed && (toolCard.monitor?.installed ?? false)
                 spacing: Kirigami.Units.smallSpacing
 
                 Item { Layout.fillWidth: true }
+
+                PlasmaComponents.ToolButton {
+                    icon.name: "view-refresh"
+                    text: toolCard.monitor?.syncing ? i18n("Syncing...") : i18n("Sync")
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    enabled: !(toolCard.monitor?.syncing ?? false) && toolCard.monitor?.syncEnabled
+                    visible: toolCard.monitor?.syncEnabled ?? false
+                    onClicked: {
+                        if (toolCard.monitor && typeof toolCard.monitor.syncFromBrowser === "function") {
+                            toolCard.triggerSync();
+                        }
+                    }
+                    PlasmaComponents.ToolTip { text: i18n("Sync usage data from browser cookies") }
+                }
 
                 PlasmaComponents.ToolButton {
                     icon.name: "list-add"
@@ -355,6 +603,13 @@ ColumnLayout {
                 }
             }
         }
+    }
+
+    // ── Sync trigger (called from button or timer) ──
+    signal syncRequested()
+
+    function triggerSync() {
+        syncRequested();
     }
 
     // ── Helper functions ──

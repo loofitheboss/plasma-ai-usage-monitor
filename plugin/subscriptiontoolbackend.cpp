@@ -2,6 +2,7 @@
 #include <QDate>
 #include <QDebug>
 #include <QTimeZone>
+#include <QNetworkAccessManager>
 
 SubscriptionToolBackend::SubscriptionToolBackend(QObject *parent)
     : QObject(parent)
@@ -242,4 +243,148 @@ void SubscriptionToolBackend::checkLimitWarnings()
             Q_EMIT limitReached(toolName());
         }
     }
+}
+
+// --- Secondary Time ---
+
+QDateTime SubscriptionToolBackend::secondaryPeriodEnd() const
+{
+    if (!hasSecondaryLimit()) return QDateTime();
+    return calculatePeriodEnd(secondaryPeriodType(), m_secondaryPeriodStart);
+}
+
+int SubscriptionToolBackend::secondarySecondsUntilReset() const
+{
+    QDateTime end = secondaryPeriodEnd();
+    if (!end.isValid()) return 0;
+    qint64 secs = QDateTime::currentDateTimeUtc().secsTo(end);
+    return secs > 0 ? static_cast<int>(secs) : 0;
+}
+
+QString SubscriptionToolBackend::secondaryTimeUntilReset() const
+{
+    int secs = secondarySecondsUntilReset();
+    if (secs <= 0) return QStringLiteral("now");
+
+    int hours = secs / 3600;
+    int mins = (secs % 3600) / 60;
+
+    if (hours > 24) {
+        int days = hours / 24;
+        return QStringLiteral("%1d %2h").arg(days).arg(hours % 24);
+    }
+    if (hours > 0) {
+        return QStringLiteral("%1h %2m").arg(hours).arg(mins);
+    }
+    return QStringLiteral("%1m").arg(mins);
+}
+
+// --- Session Info ---
+
+double SubscriptionToolBackend::sessionPercentUsed() const { return m_sessionPercentUsed; }
+bool SubscriptionToolBackend::hasSessionInfo() const { return m_hasSessionInfo; }
+void SubscriptionToolBackend::setSessionPercentUsed(double pct)
+{
+    m_sessionPercentUsed = pct;
+    Q_EMIT usageUpdated();
+}
+void SubscriptionToolBackend::setHasSessionInfo(bool has)
+{
+    m_hasSessionInfo = has;
+    Q_EMIT usageUpdated();
+}
+
+// --- Extra / Metered Usage ---
+
+bool SubscriptionToolBackend::hasExtraUsage() const { return m_hasExtraUsage; }
+double SubscriptionToolBackend::extraUsageSpent() const { return m_extraUsageSpent; }
+double SubscriptionToolBackend::extraUsageLimit() const { return m_extraUsageLimit; }
+double SubscriptionToolBackend::extraUsagePercent() const
+{
+    if (m_extraUsageLimit <= 0.0) return 0.0;
+    return (m_extraUsageSpent / m_extraUsageLimit) * 100.0;
+}
+QDateTime SubscriptionToolBackend::extraUsageResetDate() const { return m_extraUsageResetDate; }
+QString SubscriptionToolBackend::currencySymbol() const { return m_currencySymbol; }
+
+void SubscriptionToolBackend::setExtraUsageSpent(double spent) { m_extraUsageSpent = spent; }
+void SubscriptionToolBackend::setExtraUsageLimit(double limit) { m_extraUsageLimit = limit; }
+void SubscriptionToolBackend::setExtraUsageResetDate(const QDateTime &date) { m_extraUsageResetDate = date; }
+void SubscriptionToolBackend::setCurrencySymbol(const QString &symbol) { m_currencySymbol = symbol; }
+void SubscriptionToolBackend::setHasExtraUsage(bool has) { m_hasExtraUsage = has; }
+
+// --- Subscription Cost ---
+
+double SubscriptionToolBackend::subscriptionCost() const { return m_subscriptionCost; }
+bool SubscriptionToolBackend::hasSubscriptionCost() const { return false; }
+void SubscriptionToolBackend::setSubscriptionCostValue(double cost) { m_subscriptionCost = cost; }
+double SubscriptionToolBackend::defaultCostForPlan(const QString &) const { return 0.0; }
+
+// --- Tertiary Usage ---
+
+bool SubscriptionToolBackend::hasTertiaryLimit() const { return false; }
+QString SubscriptionToolBackend::tertiaryPeriodLabel() const { return QString(); }
+double SubscriptionToolBackend::tertiaryPercentRemaining() const { return m_tertiaryPercentRemaining; }
+QDateTime SubscriptionToolBackend::tertiaryResetDate() const { return m_tertiaryResetDate; }
+void SubscriptionToolBackend::setTertiaryPercentRemaining(double pct) { m_tertiaryPercentRemaining = pct; }
+void SubscriptionToolBackend::setTertiaryResetDate(const QDateTime &date) { m_tertiaryResetDate = date; }
+
+// --- Credits ---
+
+bool SubscriptionToolBackend::hasCredits() const { return false; }
+int SubscriptionToolBackend::remainingCredits() const { return m_remainingCredits; }
+void SubscriptionToolBackend::setRemainingCredits(int credits) { m_remainingCredits = credits; }
+
+// --- Browser Sync ---
+
+bool SubscriptionToolBackend::isSyncEnabled() const { return m_syncEnabled; }
+void SubscriptionToolBackend::setSyncEnabled(bool enabled)
+{
+    if (m_syncEnabled != enabled) {
+        m_syncEnabled = enabled;
+        Q_EMIT syncEnabledChanged();
+    }
+}
+
+QString SubscriptionToolBackend::syncStatus() const { return m_syncStatus; }
+QDateTime SubscriptionToolBackend::lastSyncTime() const { return m_lastSyncTime; }
+bool SubscriptionToolBackend::isSyncing() const { return m_syncing; }
+
+void SubscriptionToolBackend::setSyncing(bool syncing)
+{
+    if (m_syncing != syncing) {
+        m_syncing = syncing;
+        Q_EMIT syncStatusChanged();
+    }
+}
+
+void SubscriptionToolBackend::setSyncStatus(const QString &status)
+{
+    if (m_syncStatus != status) {
+        m_syncStatus = status;
+        Q_EMIT syncStatusChanged();
+    }
+}
+
+void SubscriptionToolBackend::setLastSyncTime(const QDateTime &time)
+{
+    m_lastSyncTime = time;
+    Q_EMIT syncStatusChanged();
+}
+
+void SubscriptionToolBackend::syncFromBrowser(const QString &cookieDbPath, int browserType)
+{
+    Q_UNUSED(cookieDbPath);
+    Q_UNUSED(browserType);
+    // Default implementation — subclasses override for actual sync
+    setSyncStatus(QStringLiteral("Not supported"));
+    Q_EMIT syncCompleted(false, QStringLiteral("Sync not implemented for this tool"));
+}
+
+QNetworkAccessManager *SubscriptionToolBackend::networkManager()
+{
+    if (!m_networkManager) {
+        m_networkManager = new QNetworkAccessManager(this);
+    }
+    return m_networkManager;
 }

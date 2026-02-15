@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        2.2.0
+Version:        2.3.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -58,6 +58,19 @@ Features:
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
 
 %changelog
+* Sun Feb 16 2026 Loofi <loofi@github.com> - 2.3.0-1
+- Add browser cookie sync for real-time usage data from Claude.ai and ChatGPT
+- Add BrowserCookieExtractor for reading Firefox session cookies (read-only)
+- Add full dashboard view: session info, extra usage, tertiary limits, credits
+- Add subscription cost display per tool ($X/mo badge)
+- Extend ClaudeCodeMonitor with API sync (session %, weekly, extra usage/billing)
+- Extend CodexCliMonitor with API sync (5h, weekly, code review, credits)
+- Add CopilotMonitor subscription cost support
+- Redesign SubscriptionToolCard.qml as full dashboard replica
+- Add browser sync config section with connection test buttons
+- Add sync refresh button and auto-sync timer in main widget
+- Mark browser sync as experimental with ToS disclaimer
+
 * Sun Feb 15 2026 Loofi <loofi@github.com> - 2.2.0-1
 - Add subscription tool tracking for Claude Code, Codex CLI, and GitHub Copilot
 - Add SubscriptionToolBackend abstract base class with rolling time windows

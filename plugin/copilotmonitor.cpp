@@ -150,3 +150,18 @@ int CopilotMonitor::defaultLimitForPlan(const QString &plan) const
     if (plan == QStringLiteral("Enterprise")) return 1000;
     return 50;
 }
+
+double CopilotMonitor::subscriptionCost() const
+{
+    return defaultCostForPlan(planTier());
+}
+
+double CopilotMonitor::defaultCostForPlan(const QString &plan) const
+{
+    if (plan == QStringLiteral("Free")) return 0.0;
+    if (plan == QStringLiteral("Pro")) return 10.0;
+    if (plan == QStringLiteral("Pro+")) return 39.0;
+    if (plan == QStringLiteral("Business")) return 19.0;
+    if (plan == QStringLiteral("Enterprise")) return 39.0;
+    return 0.0;
+}

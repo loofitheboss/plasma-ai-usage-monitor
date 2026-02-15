@@ -12,11 +12,11 @@
  * - Primary: 5-hour session window
  * - Secondary: Weekly rolling window (separate Opus/non-Opus limits)
  *
- * No public API exists for checking remaining quota. This monitor:
- * 1. Detects if Claude Code CLI is installed (checks PATH + ~/.claude/)
- * 2. Watches ~/.claude/ for file changes indicating activity
- * 3. Self-tracks usage counts in the local database
- * 4. Lets users set their plan tier (Pro/Max5x/Max20x) to auto-fill limits
+ * v2.3: Added browser-sync support via Claude.ai internal APIs.
+ * When enabled, extracts session cookies from Firefox to call:
+ * - GET /api/account → get organization UUID
+ * - GET /api/organizations/{uuid}/usage → session %, weekly limits
+ * - GET /api/organizations/{uuid}/settings/billing → extra usage spend
  *
  * Plans and approximate limits (messages vary by complexity):
  * - Pro ($20/mo):    ~45 messages/5h session, ~225/week
@@ -40,14 +40,22 @@ public:
     QString secondaryPeriodLabel() const override { return QStringLiteral("Weekly"); }
     bool hasSecondaryLimit() const override { return true; }
 
+    // Subscription cost
+    bool hasSubscriptionCost() const override { return true; }
+    double subscriptionCost() const override;
+
     // Plan management
     Q_INVOKABLE QStringList availablePlans() const override;
     Q_INVOKABLE int defaultLimitForPlan(const QString &plan) const override;
     Q_INVOKABLE int defaultSecondaryLimitForPlan(const QString &plan) const override;
+    Q_INVOKABLE double defaultCostForPlan(const QString &plan) const override;
 
     // Tool detection
     Q_INVOKABLE void checkToolInstalled() override;
     Q_INVOKABLE void detectActivity() override;
+
+    // Browser sync
+    Q_INVOKABLE void syncFromBrowser(const QString &cookieDbPath, int browserType) override;
 
 protected:
     UsagePeriod primaryPeriodType() const override { return FiveHour; }
@@ -60,9 +68,13 @@ private Q_SLOTS:
 private:
     void setupWatcher();
     QString claudeConfigDir() const;
+    void fetchAccountInfo(const QString &cookieHeader);
+    void fetchUsageData(const QString &orgUuid, const QString &cookieHeader);
+    void fetchBillingData(const QString &orgUuid, const QString &cookieHeader);
 
     QFileSystemWatcher *m_watcher;
     QDateTime m_lastKnownModification;
+    QString m_orgUuid;
 };
 
 #endif // CLAUDECODEMONITOR_H

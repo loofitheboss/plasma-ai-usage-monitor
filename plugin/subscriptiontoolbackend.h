@@ -5,6 +5,10 @@
 #include <QString>
 #include <QDateTime>
 #include <QTimer>
+#include <QJsonObject>
+
+class QNetworkAccessManager;
+class QNetworkReply;
 
 /**
  * Abstract base class for subscription-based AI coding tool monitors.
@@ -16,8 +20,9 @@
  * Subclasses implement tool-specific detection and monitoring logic
  * for tools like Claude Code, OpenAI Codex CLI, and GitHub Copilot.
  *
- * Usage is self-tracked locally in the SQLite database since none of
- * these tools expose public APIs for individual quota checking.
+ * v2.3: Added browser-sync support. When enabled, the widget extracts
+ * session cookies from the user's browser to call internal service APIs
+ * for accurate usage data (experimental/optional feature).
  */
 class SubscriptionToolBackend : public QObject
 {
@@ -33,7 +38,7 @@ class SubscriptionToolBackend : public QObject
     Q_PROPERTY(bool installed READ isInstalled NOTIFY installedChanged)
     Q_PROPERTY(QString planTier READ planTier WRITE setPlanTier NOTIFY planTierChanged)
 
-    // Usage tracking
+    // Usage tracking — primary window
     Q_PROPERTY(int usageCount READ usageCount NOTIFY usageUpdated)
     Q_PROPERTY(int usageLimit READ usageLimit WRITE setUsageLimit NOTIFY usageLimitChanged)
     Q_PROPERTY(double percentUsed READ percentUsed NOTIFY usageUpdated)
@@ -54,6 +59,41 @@ class SubscriptionToolBackend : public QObject
     Q_PROPERTY(int secondsUntilReset READ secondsUntilReset NOTIFY usageUpdated)
     Q_PROPERTY(QString timeUntilReset READ timeUntilReset NOTIFY usageUpdated)
     Q_PROPERTY(QDateTime lastActivity READ lastActivity NOTIFY usageUpdated)
+    Q_PROPERTY(QDateTime secondaryPeriodEnd READ secondaryPeriodEnd NOTIFY usageUpdated)
+    Q_PROPERTY(int secondarySecondsUntilReset READ secondarySecondsUntilReset NOTIFY usageUpdated)
+    Q_PROPERTY(QString secondaryTimeUntilReset READ secondaryTimeUntilReset NOTIFY usageUpdated)
+
+    // Session tracking (current active session percentage — from API sync)
+    Q_PROPERTY(double sessionPercentUsed READ sessionPercentUsed NOTIFY usageUpdated)
+    Q_PROPERTY(bool hasSessionInfo READ hasSessionInfo NOTIFY usageUpdated)
+
+    // Extra / metered usage (e.g., Claude extra spending, Copilot metered)
+    Q_PROPERTY(bool hasExtraUsage READ hasExtraUsage NOTIFY usageUpdated)
+    Q_PROPERTY(double extraUsageSpent READ extraUsageSpent NOTIFY usageUpdated)
+    Q_PROPERTY(double extraUsageLimit READ extraUsageLimit NOTIFY usageUpdated)
+    Q_PROPERTY(double extraUsagePercent READ extraUsagePercent NOTIFY usageUpdated)
+    Q_PROPERTY(QDateTime extraUsageResetDate READ extraUsageResetDate NOTIFY usageUpdated)
+    Q_PROPERTY(QString currencySymbol READ currencySymbol NOTIFY usageUpdated)
+
+    // Subscription cost
+    Q_PROPERTY(double subscriptionCost READ subscriptionCost NOTIFY usageUpdated)
+    Q_PROPERTY(bool hasSubscriptionCost READ hasSubscriptionCost CONSTANT)
+
+    // Browser sync
+    Q_PROPERTY(bool syncEnabled READ isSyncEnabled WRITE setSyncEnabled NOTIFY syncEnabledChanged)
+    Q_PROPERTY(QString syncStatus READ syncStatus NOTIFY syncStatusChanged)
+    Q_PROPERTY(QDateTime lastSyncTime READ lastSyncTime NOTIFY syncStatusChanged)
+    Q_PROPERTY(bool syncing READ isSyncing NOTIFY syncStatusChanged)
+
+    // Tertiary usage (e.g., Codex code‐review cap)
+    Q_PROPERTY(bool hasTertiaryLimit READ hasTertiaryLimit CONSTANT)
+    Q_PROPERTY(QString tertiaryPeriodLabel READ tertiaryPeriodLabel CONSTANT)
+    Q_PROPERTY(double tertiaryPercentRemaining READ tertiaryPercentRemaining NOTIFY usageUpdated)
+    Q_PROPERTY(QDateTime tertiaryResetDate READ tertiaryResetDate NOTIFY usageUpdated)
+
+    // Credits (e.g., Codex remaining credits)
+    Q_PROPERTY(int remainingCredits READ remainingCredits NOTIFY usageUpdated)
+    Q_PROPERTY(bool hasCredits READ hasCredits CONSTANT)
 
 public:
     enum UsagePeriod {
@@ -79,7 +119,7 @@ public:
     QString planTier() const;
     void setPlanTier(const QString &tier);
 
-    // Usage
+    // Usage — primary
     int usageCount() const;
     int usageLimit() const;
     void setUsageLimit(int limit);
@@ -96,23 +136,63 @@ public:
     virtual QString secondaryPeriodLabel() const;
     virtual bool hasSecondaryLimit() const;
 
-    // Time
+    // Time — primary
     QDateTime periodStart() const;
     QDateTime periodEnd() const;
     int secondsUntilReset() const;
     QString timeUntilReset() const;
     QDateTime lastActivity() const;
 
+    // Time — secondary
+    QDateTime secondaryPeriodEnd() const;
+    int secondarySecondsUntilReset() const;
+    QString secondaryTimeUntilReset() const;
+
+    // Session (from API)
+    double sessionPercentUsed() const;
+    bool hasSessionInfo() const;
+
+    // Extra / metered usage
+    bool hasExtraUsage() const;
+    double extraUsageSpent() const;
+    double extraUsageLimit() const;
+    double extraUsagePercent() const;
+    QDateTime extraUsageResetDate() const;
+    QString currencySymbol() const;
+
+    // Subscription cost
+    virtual double subscriptionCost() const;
+    virtual bool hasSubscriptionCost() const;
+
+    // Browser sync
+    bool isSyncEnabled() const;
+    void setSyncEnabled(bool enabled);
+    QString syncStatus() const;
+    QDateTime lastSyncTime() const;
+    bool isSyncing() const;
+
+    // Tertiary (code review, etc.)
+    virtual bool hasTertiaryLimit() const;
+    virtual QString tertiaryPeriodLabel() const;
+    double tertiaryPercentRemaining() const;
+    QDateTime tertiaryResetDate() const;
+
+    // Credits
+    virtual bool hasCredits() const;
+    int remainingCredits() const;
+
     // Actions
     Q_INVOKABLE void incrementUsage();
     Q_INVOKABLE void resetUsage();
     Q_INVOKABLE virtual void checkToolInstalled() = 0;
     Q_INVOKABLE virtual void detectActivity() = 0;
+    Q_INVOKABLE virtual void syncFromBrowser(const QString &cookieDbPath, int browserType);
 
     // Plan presets (subclasses populate these)
     Q_INVOKABLE virtual QStringList availablePlans() const = 0;
     Q_INVOKABLE virtual int defaultLimitForPlan(const QString &plan) const = 0;
     Q_INVOKABLE virtual int defaultSecondaryLimitForPlan(const QString &plan) const;
+    Q_INVOKABLE virtual double defaultCostForPlan(const QString &plan) const;
 
 Q_SIGNALS:
     void enabledChanged();
@@ -120,6 +200,9 @@ Q_SIGNALS:
     void planTierChanged();
     void usageUpdated();
     void usageLimitChanged();
+    void syncEnabledChanged();
+    void syncStatusChanged();
+    void syncCompleted(bool success, const QString &message);
     void limitWarning(const QString &tool, int percentUsed);
     void limitReached(const QString &tool);
     void activityDetected(const QString &tool);
@@ -131,11 +214,29 @@ protected:
     void setPeriodStart(const QDateTime &start);
     void setLastActivity(const QDateTime &time);
 
+    // Sync helpers for subclasses
+    void setSyncing(bool syncing);
+    void setSyncStatus(const QString &status);
+    void setLastSyncTime(const QDateTime &time);
+    void setSessionPercentUsed(double pct);
+    void setHasSessionInfo(bool has);
+    void setExtraUsageSpent(double spent);
+    void setExtraUsageLimit(double limit);
+    void setExtraUsageResetDate(const QDateTime &date);
+    void setCurrencySymbol(const QString &symbol);
+    void setHasExtraUsage(bool has);
+    void setTertiaryPercentRemaining(double pct);
+    void setTertiaryResetDate(const QDateTime &date);
+    void setRemainingCredits(int credits);
+    void setSubscriptionCostValue(double cost);
+
     // Period management
     virtual UsagePeriod primaryPeriodType() const = 0;
     virtual UsagePeriod secondaryPeriodType() const;
     void checkAndResetPeriod();
     QDateTime calculatePeriodEnd(UsagePeriod period, const QDateTime &start) const;
+
+    QNetworkAccessManager *networkManager();
 
 private:
     void checkLimitWarnings();
@@ -153,7 +254,31 @@ private:
     QDateTime m_secondaryPeriodStart;
     QDateTime m_lastActivity;
 
+    // Session & extra usage (from sync)
+    double m_sessionPercentUsed = 0.0;
+    bool m_hasSessionInfo = false;
+    bool m_hasExtraUsage = false;
+    double m_extraUsageSpent = 0.0;
+    double m_extraUsageLimit = 0.0;
+    QDateTime m_extraUsageResetDate;
+    QString m_currencySymbol = QStringLiteral("$");
+    double m_subscriptionCost = 0.0;
+
+    // Tertiary window
+    double m_tertiaryPercentRemaining = 0.0;
+    QDateTime m_tertiaryResetDate;
+
+    // Credits
+    int m_remainingCredits = 0;
+
+    // Sync state
+    bool m_syncEnabled = false;
+    bool m_syncing = false;
+    QString m_syncStatus;
+    QDateTime m_lastSyncTime;
+
     QTimer *m_resetCheckTimer;
+    QNetworkAccessManager *m_networkManager = nullptr;
 };
 
 #endif // SUBSCRIPTIONTOOLBACKEND_H

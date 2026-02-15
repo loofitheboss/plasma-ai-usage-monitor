@@ -8,6 +8,11 @@ import com.github.loofi.aiusagemonitor 1.0
 KCM.SimpleKCM {
     id: subscriptionsPage
 
+    // ── Browser Sync ──
+    property alias cfg_browserSyncEnabled: browserSyncSwitch.checked
+    property alias cfg_browserSyncBrowser: browserSyncBrowserCombo.currentIndex
+    property alias cfg_browserSyncInterval: browserSyncIntervalSpin.value
+
     // ── Claude Code ──
     property alias cfg_claudeCodeEnabled: claudeCodeSwitch.checked
     property alias cfg_claudeCodePlan: claudeCodePlanCombo.currentIndex
@@ -427,5 +432,150 @@ KCM.SimpleKCM {
             placeholderText: i18n("my-org-name")
             Layout.fillWidth: true
         }
+
+        // ══════════════════════════════════════════════
+        // ── Browser Sync (Experimental) ──
+        // ══════════════════════════════════════════════
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: i18n("Browser Sync (Experimental)")
+        }
+
+        QQC2.Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            text: i18n("Sync real-time usage data by reading session cookies from your browser. "
+                     + "This reads cookies from your browser's cookie database (read-only) to "
+                     + "fetch usage data from Claude.ai and ChatGPT. Firefox only for now.")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: disclaimerLabel.implicitHeight + Kirigami.Units.smallSpacing * 2
+            radius: Kirigami.Units.cornerRadius
+            color: Qt.alpha(Kirigami.Theme.neutralTextColor, 0.08)
+            border.width: 1
+            border.color: Qt.alpha(Kirigami.Theme.neutralTextColor, 0.2)
+
+            QQC2.Label {
+                id: disclaimerLabel
+                anchors {
+                    fill: parent
+                    margins: Kirigami.Units.smallSpacing
+                }
+                wrapMode: Text.WordWrap
+                text: i18n("⚠ This feature uses internal, undocumented APIs. It may stop working "
+                         + "if services change their API. Your cookie data never leaves your "
+                         + "machine — all requests go directly to the official services.")
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                color: Kirigami.Theme.neutralTextColor
+            }
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Enable sync:")
+            spacing: Kirigami.Units.largeSpacing
+
+            QQC2.Switch {
+                id: browserSyncSwitch
+                checked: plasmoid.configuration.browserSyncEnabled
+            }
+
+            QQC2.Label {
+                text: syncDetector.hasFirefoxProfile
+                    ? "✓ " + i18n("Firefox profile found")
+                    : "✗ " + i18n("No Firefox profile")
+                color: syncDetector.hasFirefoxProfile
+                    ? Kirigami.Theme.positiveTextColor
+                    : Kirigami.Theme.disabledTextColor
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+            }
+        }
+
+        QQC2.ComboBox {
+            id: browserSyncBrowserCombo
+            Kirigami.FormData.label: i18n("Browser:")
+            enabled: browserSyncSwitch.checked
+            model: [i18n("Firefox"), i18n("Chrome (not supported)"), i18n("Chromium (not supported)")]
+            currentIndex: plasmoid.configuration.browserSyncBrowser
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Sync interval:")
+            enabled: browserSyncSwitch.checked
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.SpinBox {
+                id: browserSyncIntervalSpin
+                from: 60
+                to: 3600
+                stepSize: 60
+                value: plasmoid.configuration.browserSyncInterval
+                editable: true
+
+                textFromValue: function(value, locale) {
+                    return Math.floor(value / 60) + " min";
+                }
+                valueFromText: function(text, locale) {
+                    return parseInt(text) * 60;
+                }
+            }
+
+            QQC2.Label {
+                text: i18n("(minimum 60 seconds)")
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                opacity: 0.5
+            }
+        }
+
+        // Connection test
+        RowLayout {
+            Kirigami.FormData.label: i18n("Connection test:")
+            visible: browserSyncSwitch.checked
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Button {
+                text: i18n("Test Claude.ai")
+                icon.name: "network-connect"
+                onClicked: {
+                    var result = syncDetector.testConnection("claude");
+                    claudeTestLabel.text = result;
+                    claudeTestLabel.visible = true;
+                }
+            }
+            QQC2.Label {
+                id: claudeTestLabel
+                visible: false
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+            }
+        }
+
+        RowLayout {
+            visible: browserSyncSwitch.checked
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Button {
+                text: i18n("Test ChatGPT")
+                icon.name: "network-connect"
+                onClicked: {
+                    var result = syncDetector.testConnection("chatgpt");
+                    chatgptTestLabel.text = result;
+                    chatgptTestLabel.visible = true;
+                }
+            }
+            QQC2.Label {
+                id: chatgptTestLabel
+                visible: false
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+            }
+        }
+    }
+
+    // ── BrowserCookieExtractor for config page ──
+    BrowserCookieExtractor {
+        id: syncDetector
     }
 }

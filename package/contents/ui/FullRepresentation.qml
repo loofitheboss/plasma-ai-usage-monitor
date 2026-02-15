@@ -168,14 +168,29 @@ PlasmaExtras.Representation {
                         }
 
                         // ── Subscription Tools Section ──
-                        PlasmaExtras.Heading {
-                            level: 5
-                            text: i18n("Subscription Tools")
+                        RowLayout {
                             Layout.fillWidth: true
                             Layout.leftMargin: Kirigami.Units.smallSpacing
+                            Layout.rightMargin: Kirigami.Units.smallSpacing
                             Layout.topMargin: Kirigami.Units.largeSpacing
                             visible: root.enabledToolCount > 0
-                            opacity: 0.7
+
+                            PlasmaExtras.Heading {
+                                level: 5
+                                text: i18n("Subscription Tools")
+                                Layout.fillWidth: true
+                                opacity: 0.7
+                            }
+
+                            PlasmaComponents.ToolButton {
+                                icon.name: "view-refresh"
+                                display: PlasmaComponents.AbstractButton.IconOnly
+                                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                                visible: plasmoid.configuration.browserSyncEnabled
+                                onClicked: root.performBrowserSync()
+                                PlasmaComponents.ToolTip { text: i18n("Sync usage data from browser") }
+                            }
                         }
 
                         Repeater {
@@ -190,6 +205,10 @@ PlasmaExtras.Representation {
                                 toolIcon: modelData.monitor?.iconName ?? "utilities-terminal"
                                 toolColor: modelData.monitor?.toolColor ?? Kirigami.Theme.textColor
                                 monitor: modelData.monitor ?? null
+
+                                onSyncRequested: {
+                                    root.performBrowserSync();
+                                }
                             }
                         }
 

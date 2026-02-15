@@ -47,6 +47,11 @@ public:
     Q_INVOKABLE QStringList availablePlans() const override;
     Q_INVOKABLE int defaultLimitForPlan(const QString &plan) const override;
 
+    // Cost
+    double subscriptionCost() const override;
+    double defaultCostForPlan(const QString &plan) const override;
+    bool hasSubscriptionCost() const override { return true; }
+
     // Tool detection
     Q_INVOKABLE void checkToolInstalled() override;
     Q_INVOKABLE void detectActivity() override;

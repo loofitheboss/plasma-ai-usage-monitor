@@ -15,6 +15,7 @@
 #include "claudecodemonitor.h"
 #include "codexclimonitor.h"
 #include "copilotmonitor.h"
+#include "browsercookieextractor.h"
 
 #include <QQmlEngine>
 
@@ -39,6 +40,9 @@ void AiUsagePlugin::registerTypes(const char *uri)
     qmlRegisterType<ClaudeCodeMonitor>(uri, 1, 0, "ClaudeCodeMonitor");
     qmlRegisterType<CodexCliMonitor>(uri, 1, 0, "CodexCliMonitor");
     qmlRegisterType<CopilotMonitor>(uri, 1, 0, "CopilotMonitor");
+
+    // Browser cookie extraction for sync
+    qmlRegisterType<BrowserCookieExtractor>(uri, 1, 0, "BrowserCookieExtractor");
 
     // Register abstract base classes as uncreatable (for type info in QML)
     qmlRegisterUncreatableType<ProviderBackend>(uri, 1, 0, "ProviderBackend",

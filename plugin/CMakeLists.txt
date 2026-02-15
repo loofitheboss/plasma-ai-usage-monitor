@@ -15,6 +15,7 @@ set(aiusagemonitor_SRCS
     claudecodemonitor.cpp
     codexclimonitor.cpp
     copilotmonitor.cpp
+    browsercookieextractor.cpp
 )
 
 set(aiusagemonitor_HDRS
@@ -36,6 +37,7 @@ set(aiusagemonitor_HDRS
     claudecodemonitor.h
     codexclimonitor.h
     copilotmonitor.h
+    browsercookieextractor.h
 )
 
 add_library(aiusagemonitorplugin SHARED ${aiusagemonitor_SRCS} ${aiusagemonitor_HDRS})

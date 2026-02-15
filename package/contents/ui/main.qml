@@ -267,6 +267,21 @@ PlasmoidItem {
 
     // ── Subscription Tool Monitors ──
 
+    // Browser cookie extractor for sync
+    BrowserCookieExtractor {
+        id: browserCookies
+        browserType: plasmoid.configuration.browserSyncBrowser
+    }
+
+    // Browser sync timer
+    Timer {
+        id: browserSyncTimer
+        interval: Math.max(60, plasmoid.configuration.browserSyncInterval) * 1000
+        running: plasmoid.configuration.browserSyncEnabled
+        repeat: true
+        onTriggered: performBrowserSync()
+    }
+
     ClaudeCodeMonitor {
         id: claudeCodeMonitor
         enabled: plasmoid.configuration.claudeCodeEnabled
@@ -274,6 +289,7 @@ PlasmoidItem {
 
         Component.onCompleted: {
             checkToolInstalled();
+            syncEnabled = Qt.binding(function() { return plasmoid.configuration.browserSyncEnabled; });
             // Set plan from config index
             var plans = availablePlans();
             var idx = plasmoid.configuration.claudeCodePlan;
@@ -302,11 +318,13 @@ PlasmoidItem {
 
         Component.onCompleted: {
             checkToolInstalled();
+            syncEnabled = Qt.binding(function() { return plasmoid.configuration.browserSyncEnabled; });
             var plans = availablePlans();
             var idx = plasmoid.configuration.codexPlan;
             if (idx >= 0 && idx < plans.length) {
                 planTier = plans[idx];
                 if (usageLimit === 0) usageLimit = defaultLimitForPlan(plans[idx]);
+                if (hasSecondaryLimit) secondaryUsageLimit = defaultSecondaryLimitForPlan(plans[idx]);
             }
         }
 
@@ -722,6 +740,28 @@ PlasmoidItem {
         );
     }
 
+    // ── Browser Sync ──
+
+    function performBrowserSync() {
+        if (!plasmoid.configuration.browserSyncEnabled) return;
+
+        // Sync Claude Code (claude.ai cookies)
+        if (plasmoid.configuration.claudeCodeEnabled && claudeCodeMonitor.installed) {
+            var claudeHeader = browserCookies.getCookieHeader("claude.ai");
+            if (claudeHeader.length > 0) {
+                claudeCodeMonitor.syncFromBrowser(claudeHeader, plasmoid.configuration.browserSyncBrowser);
+            }
+        }
+
+        // Sync Codex CLI (chatgpt.com cookies)
+        if (plasmoid.configuration.codexEnabled && codexCliMonitor.installed) {
+            var codexHeader = browserCookies.getCookieHeader("chatgpt.com");
+            if (codexHeader.length > 0) {
+                codexCliMonitor.syncFromBrowser(codexHeader, plasmoid.configuration.browserSyncBrowser);
+            }
+        }
+    }
+
     // ── Lifecycle ──
 
     Component.onCompleted: {
@@ -730,6 +770,17 @@ PlasmoidItem {
         }
         // Initial prune of old data
         usageDatabase.pruneOldData();
+        // Initial browser sync after a short delay
+        if (plasmoid.configuration.browserSyncEnabled) {
+            initialSyncTimer.start();
+        }
+    }
+
+    Timer {
+        id: initialSyncTimer
+        interval: 5000 // 5 second delay for startup
+        repeat: false
+        onTriggered: performBrowserSync()
     }
 
     // React to config changes

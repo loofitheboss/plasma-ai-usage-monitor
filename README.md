@@ -48,6 +48,21 @@ In addition to API providers, the widget tracks usage limits for subscription-ba
 
 **Note:** None of these tools expose public APIs for individual quota checking. Usage is self-tracked locally via filesystem monitoring and manual counting, with limits auto-populated from plan presets.
 
+### Browser Sync (Experimental)
+
+Optionally sync real-time usage data by reading session cookies from your Firefox browser:
+
+- **Claude Code** — Syncs session usage %, weekly limits, and extra usage spending from claude.ai internal API
+- **Codex CLI** — Syncs 5-hour usage, weekly limits, code review quotas, and remaining credits from chatgpt.com internal API
+
+**How it works:** The widget reads cookies from Firefox's `cookies.sqlite` database (read-only) and makes authenticated requests to the same internal APIs that the web dashboards use. Your cookie data never leaves your machine — all requests go directly to the official services.
+
+**Enable:** Settings → Subscriptions → Browser Sync → Enable sync
+
+**Requirements:** Firefox with an active session on claude.ai and/or chatgpt.com. Chrome/Chromium is not currently supported (encrypted cookies).
+
+> **Warning:** This feature uses internal, undocumented APIs. It may stop working if services change their API structure. Use at your own risk.
+
 ## What Each Provider Reports
 
 | Metric | OpenAI | Anthropic | Google | Mistral | DeepSeek | Groq | xAI |
