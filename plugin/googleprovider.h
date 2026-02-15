@@ -23,6 +23,7 @@ class GoogleProvider : public ProviderBackend
     Q_OBJECT
 
     Q_PROPERTY(QString model READ model WRITE setModel NOTIFY modelChanged)
+    Q_PROPERTY(QString tier READ tier WRITE setTier NOTIFY tierChanged)
 
 public:
     explicit GoogleProvider(QObject *parent = nullptr);
@@ -33,10 +34,14 @@ public:
     QString model() const;
     void setModel(const QString &model);
 
+    QString tier() const;
+    void setTier(const QString &tier);
+
     Q_INVOKABLE void refresh() override;
 
 Q_SIGNALS:
     void modelChanged();
+    void tierChanged();
 
 private Q_SLOTS:
     void onCountTokensReply(QNetworkReply *reply);
@@ -46,6 +51,7 @@ private:
     void applyKnownLimits();
 
     QString m_model = QStringLiteral("gemini-2.0-flash");
+    QString m_tier = QStringLiteral("free");
 
     static constexpr const char *BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 };

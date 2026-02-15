@@ -47,6 +47,17 @@ public:
                                      int rateLimitTokensRemaining);
 
     /**
+     * Record a usage snapshot for a subscription tool.
+     * Tracks usage count against limits for tools like Claude Code, Codex, Copilot.
+     */
+    Q_INVOKABLE void recordToolSnapshot(const QString &toolName,
+                                         int usageCount,
+                                         int usageLimit,
+                                         const QString &periodType,
+                                         const QString &planTier,
+                                         bool limitReached);
+
+    /**
      * Record a rate limit event (hitting or approaching limits).
      */
     Q_INVOKABLE void recordRateLimitEvent(const QString &provider,

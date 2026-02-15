@@ -1,0 +1,152 @@
+#include "copilotmonitor.h"
+#include <QStandardPaths>
+#include <QDir>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QNetworkRequest>
+#include <QDebug>
+
+CopilotMonitor::CopilotMonitor(QObject *parent)
+    : SubscriptionToolBackend(parent)
+    , m_networkManager(new QNetworkAccessManager(this))
+{
+}
+
+void CopilotMonitor::checkToolInstalled()
+{
+    bool found = false;
+
+    // Check for GitHub CLI with Copilot extension
+    QString ghPath = QStandardPaths::findExecutable(QStringLiteral("gh"));
+    if (!ghPath.isEmpty()) {
+        // gh CLI is available; Copilot extension may be installed
+        found = true;
+    }
+
+    // Check for VS Code Copilot extension directory
+    QString vscodeExtDir = QDir::homePath() + QStringLiteral("/.vscode/extensions");
+    QDir extDir(vscodeExtDir);
+    if (extDir.exists()) {
+        const auto entries = extDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const auto &entry : entries) {
+            if (entry.startsWith(QStringLiteral("github.copilot"))) {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    // Check for Neovim Copilot plugin
+    QString nvimCopilot = QDir::homePath() + QStringLiteral("/.local/share/nvim");
+    if (QDir(nvimCopilot).exists()) {
+        // Basic check for nvim installation that might have copilot
+        found = found || QDir(nvimCopilot).exists();
+    }
+
+    setInstalled(found);
+}
+
+void CopilotMonitor::detectActivity()
+{
+    // GitHub Copilot activity is tracked by the IDE
+    // Since there's no simple file to watch, usage is self-tracked
+    // via the incrementUsage() method called from QML or other triggers.
+    //
+    // For the initial implementation, this is a no-op — the user
+    // manually tracks premium request usage or relies on the
+    // organization API if available.
+}
+
+// --- GitHub API ---
+
+QString CopilotMonitor::githubToken() const { return m_githubToken; }
+void CopilotMonitor::setGithubToken(const QString &token)
+{
+    if (m_githubToken != token) {
+        m_githubToken = token;
+        Q_EMIT githubTokenChanged();
+    }
+}
+
+QString CopilotMonitor::orgName() const { return m_orgName; }
+void CopilotMonitor::setOrgName(const QString &name)
+{
+    if (m_orgName != name) {
+        m_orgName = name;
+        Q_EMIT orgNameChanged();
+    }
+}
+
+bool CopilotMonitor::hasOrgMetrics() const { return m_hasOrgMetrics; }
+int CopilotMonitor::orgActiveUsers() const { return m_orgActiveUsers; }
+int CopilotMonitor::orgTotalSeats() const { return m_orgTotalSeats; }
+
+void CopilotMonitor::fetchOrgMetrics()
+{
+    if (m_githubToken.isEmpty() || m_orgName.isEmpty()) return;
+
+    // GET /orgs/{org}/copilot/billing
+    QUrl url(QStringLiteral("https://api.github.com/orgs/%1/copilot/billing").arg(m_orgName));
+
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(m_githubToken).toUtf8());
+    request.setRawHeader("Accept", "application/vnd.github+json");
+    request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
+
+    QNetworkReply *reply = m_networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        onBillingReply(reply);
+    });
+}
+
+void CopilotMonitor::onBillingReply(QNetworkReply *reply)
+{
+    reply->deleteLater();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        qWarning() << "CopilotMonitor: GitHub API error:" << reply->errorString();
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (doc.isNull()) return;
+
+    QJsonObject root = doc.object();
+
+    // Extract seat information
+    int totalSeats = root.value(QStringLiteral("total_seats")).toInt(0);
+    // seat_breakdown contains active_this_cycle, inactive_this_cycle, etc.
+    QJsonObject breakdown = root.value(QStringLiteral("seat_breakdown")).toObject();
+    int activeUsers = breakdown.value(QStringLiteral("active_this_cycle")).toInt(0);
+
+    m_orgTotalSeats = totalSeats;
+    m_orgActiveUsers = activeUsers;
+    m_hasOrgMetrics = true;
+
+    Q_EMIT orgMetricsUpdated();
+}
+
+QStringList CopilotMonitor::availablePlans() const
+{
+    return {
+        QStringLiteral("Free"),
+        QStringLiteral("Pro"),
+        QStringLiteral("Pro+"),
+        QStringLiteral("Business"),
+        QStringLiteral("Enterprise")
+    };
+}
+
+int CopilotMonitor::defaultLimitForPlan(const QString &plan) const
+{
+    // Monthly premium request limits
+    if (plan == QStringLiteral("Free")) return 50;
+    if (plan == QStringLiteral("Pro")) return 300;
+    if (plan == QStringLiteral("Pro+")) return 1500;
+    if (plan == QStringLiteral("Business")) return 300;
+    if (plan == QStringLiteral("Enterprise")) return 1000;
+    return 50;
+}

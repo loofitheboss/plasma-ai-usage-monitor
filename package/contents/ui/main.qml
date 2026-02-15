@@ -40,6 +40,11 @@ PlasmoidItem {
     property alias xai: xaiBackend
     property alias usageDb: usageDatabase
 
+    // Subscription tool monitors
+    property alias claudeCode: claudeCodeMonitor
+    property alias codexCli: codexCliMonitor
+    property alias copilot: copilotMonitor
+
     // Notification cooldown tracking
     property var lastNotificationTimes: ({})
 
@@ -260,6 +265,103 @@ PlasmoidItem {
         onDataUpdated: recordProviderSnapshot("xAI", xaiBackend)
     }
 
+    // ── Subscription Tool Monitors ──
+
+    ClaudeCodeMonitor {
+        id: claudeCodeMonitor
+        enabled: plasmoid.configuration.claudeCodeEnabled
+        usageLimit: plasmoid.configuration.claudeCodeCustomLimit
+
+        Component.onCompleted: {
+            checkToolInstalled();
+            // Set plan from config index
+            var plans = availablePlans();
+            var idx = plasmoid.configuration.claudeCodePlan;
+            if (idx >= 0 && idx < plans.length) {
+                planTier = plans[idx];
+                if (usageLimit === 0) usageLimit = defaultLimitForPlan(plans[idx]);
+                if (hasSecondaryLimit) secondaryUsageLimit = defaultSecondaryLimitForPlan(plans[idx]);
+            }
+        }
+
+        onLimitWarning: function(tool, percent) {
+            handleToolLimitWarning(tool, percent);
+        }
+        onLimitReached: function(tool) {
+            handleToolLimitReached(tool);
+        }
+        onUsageUpdated: {
+            recordToolUsageSnapshot(claudeCodeMonitor);
+        }
+    }
+
+    CodexCliMonitor {
+        id: codexCliMonitor
+        enabled: plasmoid.configuration.codexEnabled
+        usageLimit: plasmoid.configuration.codexCustomLimit
+
+        Component.onCompleted: {
+            checkToolInstalled();
+            var plans = availablePlans();
+            var idx = plasmoid.configuration.codexPlan;
+            if (idx >= 0 && idx < plans.length) {
+                planTier = plans[idx];
+                if (usageLimit === 0) usageLimit = defaultLimitForPlan(plans[idx]);
+            }
+        }
+
+        onLimitWarning: function(tool, percent) {
+            handleToolLimitWarning(tool, percent);
+        }
+        onLimitReached: function(tool) {
+            handleToolLimitReached(tool);
+        }
+        onUsageUpdated: {
+            recordToolUsageSnapshot(codexCliMonitor);
+        }
+    }
+
+    CopilotMonitor {
+        id: copilotMonitor
+        enabled: plasmoid.configuration.copilotEnabled
+        usageLimit: plasmoid.configuration.copilotCustomLimit
+        orgName: plasmoid.configuration.copilotOrgName
+
+        Component.onCompleted: {
+            checkToolInstalled();
+            var plans = availablePlans();
+            var idx = plasmoid.configuration.copilotPlan;
+            if (idx >= 0 && idx < plans.length) {
+                planTier = plans[idx];
+                if (usageLimit === 0) usageLimit = defaultLimitForPlan(plans[idx]);
+            }
+            // Load GitHub token from KWallet
+            if (secrets.walletOpen && secrets.hasKey("copilot_github")) {
+                githubToken = secrets.getKey("copilot_github");
+            }
+        }
+
+        onLimitWarning: function(tool, percent) {
+            handleToolLimitWarning(tool, percent);
+        }
+        onLimitReached: function(tool) {
+            handleToolLimitReached(tool);
+        }
+        onUsageUpdated: {
+            recordToolUsageSnapshot(copilotMonitor);
+        }
+    }
+
+    // ── Subscription Notification ──
+
+    Notification {
+        id: subscriptionNotification
+        componentName: "plasma_applet_com.github.loofi.aiusagemonitor"
+        eventId: "quotaWarning"
+        title: i18n("AI Usage Monitor - Subscription")
+        iconName: "dialog-warning"
+    }
+
     // ── KDE Notifications ──
 
     Notification {
@@ -306,7 +408,7 @@ PlasmoidItem {
 
     UpdateChecker {
         id: updateChecker
-        currentVersion: "2.1.0"
+        currentVersion: "2.2.0"
         checkIntervalHours: plasmoid.configuration.updateCheckInterval || 12
 
         onUpdateAvailable: function(latestVersion, releaseUrl) {
@@ -424,6 +526,20 @@ PlasmoidItem {
         { name: "Groq", configKey: "groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled, color: "#F55036" },
         { name: "xAI / Grok", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" }
     ]
+
+    readonly property var allSubscriptionTools: [
+        { name: "Claude Code", monitor: claudeCodeMonitor, enabled: plasmoid.configuration.claudeCodeEnabled, notify: plasmoid.configuration.claudeCodeNotifications },
+        { name: "Codex CLI", monitor: codexCliMonitor, enabled: plasmoid.configuration.codexEnabled, notify: plasmoid.configuration.codexNotifications },
+        { name: "GitHub Copilot", monitor: copilotMonitor, enabled: plasmoid.configuration.copilotEnabled, notify: plasmoid.configuration.copilotNotifications }
+    ]
+
+    readonly property int enabledToolCount: {
+        var count = 0;
+        for (var i = 0; i < allSubscriptionTools.length; i++) {
+            if (allSubscriptionTools[i].enabled) count++;
+        }
+        return count;
+    }
 
     readonly property int connectedCount: {
         var count = 0;
@@ -567,6 +683,45 @@ PlasmoidItem {
         errorNotification.sendEvent();
     }
 
+    function handleToolLimitWarning(toolName, percentUsed) {
+        if (!plasmoid.configuration.alertsEnabled) return;
+        // Check per-tool notification setting
+        var tools = allSubscriptionTools;
+        for (var i = 0; i < tools.length; i++) {
+            if (tools[i].name === toolName && !tools[i].notify) return;
+        }
+        if (!canNotify("tool_warning_" + toolName)) return;
+
+        subscriptionNotification.text = i18n("%1: %2% of usage limit reached", toolName, Math.round(percentUsed));
+        subscriptionNotification.urgency = percentUsed >= 95 ? Notification.CriticalUrgency : Notification.NormalUrgency;
+        subscriptionNotification.sendEvent();
+    }
+
+    function handleToolLimitReached(toolName) {
+        if (!plasmoid.configuration.alertsEnabled) return;
+        var tools = allSubscriptionTools;
+        for (var i = 0; i < tools.length; i++) {
+            if (tools[i].name === toolName && !tools[i].notify) return;
+        }
+        if (!canNotify("tool_limit_" + toolName)) return;
+
+        subscriptionNotification.text = i18n("%1: Usage limit reached!", toolName);
+        subscriptionNotification.urgency = Notification.CriticalUrgency;
+        subscriptionNotification.sendEvent();
+    }
+
+    function recordToolUsageSnapshot(monitor) {
+        if (!usageDatabase.enabled) return;
+        usageDatabase.recordToolSnapshot(
+            monitor.toolName,
+            monitor.usageCount,
+            monitor.usageLimit,
+            monitor.periodLabel,
+            monitor.planTier,
+            monitor.limitReached
+        );
+    }
+
     // ── Lifecycle ──
 
     Component.onCompleted: {
@@ -606,6 +761,20 @@ PlasmoidItem {
             deepseekRefreshTimer.interval = effectiveInterval(plasmoid.configuration.deepseekRefreshInterval);
             groqRefreshTimer.interval = effectiveInterval(plasmoid.configuration.groqRefreshInterval);
             xaiRefreshTimer.interval = effectiveInterval(plasmoid.configuration.xaiRefreshInterval);
+        }
+
+        // Subscription tool config changes
+        function onClaudeCodeEnabledChanged() {
+            claudeCodeMonitor.enabled = plasmoid.configuration.claudeCodeEnabled;
+            if (claudeCodeMonitor.enabled) claudeCodeMonitor.checkToolInstalled();
+        }
+        function onCodexEnabledChanged() {
+            codexCliMonitor.enabled = plasmoid.configuration.codexEnabled;
+            if (codexCliMonitor.enabled) codexCliMonitor.checkToolInstalled();
+        }
+        function onCopilotEnabledChanged() {
+            copilotMonitor.enabled = plasmoid.configuration.copilotEnabled;
+            if (copilotMonitor.enabled) copilotMonitor.checkToolInstalled();
         }
     }
 }

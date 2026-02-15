@@ -11,6 +11,10 @@ set(aiusagemonitor_SRCS
     groqprovider.cpp
     xaiprovider.cpp
     usagedatabase.cpp
+    subscriptiontoolbackend.cpp
+    claudecodemonitor.cpp
+    codexclimonitor.cpp
+    copilotmonitor.cpp
 )
 
 set(aiusagemonitor_HDRS
@@ -28,6 +32,10 @@ set(aiusagemonitor_HDRS
     usagedatabase.h
     clipboardhelper.h
     updatechecker.h
+    subscriptiontoolbackend.h
+    claudecodemonitor.h
+    codexclimonitor.h
+    copilotmonitor.h
 )
 
 add_library(aiusagemonitorplugin SHARED ${aiusagemonitor_SRCS} ${aiusagemonitor_HDRS})

@@ -24,6 +24,15 @@ void GoogleProvider::setModel(const QString &model)
     }
 }
 
+QString GoogleProvider::tier() const { return m_tier; }
+void GoogleProvider::setTier(const QString &tier)
+{
+    if (m_tier != tier) {
+        m_tier = tier;
+        Q_EMIT tierChanged();
+    }
+}
+
 void GoogleProvider::refresh()
 {
     if (!hasApiKey()) {
@@ -114,32 +123,49 @@ void GoogleProvider::onCountTokensReply(QNetworkReply *reply)
 
 void GoogleProvider::applyKnownLimits()
 {
-    // Known free-tier limits for Gemini API (as of 2025)
-    // These are approximate and depend on model/tier.
-    // Users on paid tiers will have higher limits.
-    //
-    // Gemini 2.0 Flash free tier:
-    //   15 RPM, 1M TPM, 1500 RPD
-    // Gemini 2.0 Flash paid tier:
-    //   2000 RPM, 4M TPM
+    // Known rate limits for Gemini API (as of 2025)
+    // Limits depend on model and pricing tier.
+    bool isPaid = (m_tier == QStringLiteral("paid"));
 
     if (m_model.contains(QStringLiteral("flash"))) {
-        setRateLimitRequests(15);  // RPM for free tier
-        setRateLimitRequestsRemaining(15); // Unknown, show full
-        setRateLimitTokens(1000000); // 1M TPM
-        setRateLimitTokensRemaining(1000000);
+        if (isPaid) {
+            setRateLimitRequests(2000);  // RPM for paid tier
+            setRateLimitRequestsRemaining(2000);
+            setRateLimitTokens(4000000); // 4M TPM
+            setRateLimitTokensRemaining(4000000);
+        } else {
+            setRateLimitRequests(15);  // RPM for free tier
+            setRateLimitRequestsRemaining(15);
+            setRateLimitTokens(1000000); // 1M TPM
+            setRateLimitTokensRemaining(1000000);
+        }
     } else if (m_model.contains(QStringLiteral("pro"))) {
-        setRateLimitRequests(2);
-        setRateLimitRequestsRemaining(2);
-        setRateLimitTokens(32000);
-        setRateLimitTokensRemaining(32000);
+        if (isPaid) {
+            setRateLimitRequests(1000);
+            setRateLimitRequestsRemaining(1000);
+            setRateLimitTokens(4000000);
+            setRateLimitTokensRemaining(4000000);
+        } else {
+            setRateLimitRequests(2);
+            setRateLimitRequestsRemaining(2);
+            setRateLimitTokens(32000);
+            setRateLimitTokensRemaining(32000);
+        }
     } else {
         // Generic defaults
-        setRateLimitRequests(15);
-        setRateLimitRequestsRemaining(15);
-        setRateLimitTokens(1000000);
-        setRateLimitTokensRemaining(1000000);
+        if (isPaid) {
+            setRateLimitRequests(1000);
+            setRateLimitRequestsRemaining(1000);
+            setRateLimitTokens(4000000);
+            setRateLimitTokensRemaining(4000000);
+        } else {
+            setRateLimitRequests(15);
+            setRateLimitRequestsRemaining(15);
+            setRateLimitTokens(1000000);
+            setRateLimitTokensRemaining(1000000);
+        }
     }
 
-    setRateLimitResetTime(QStringLiteral("N/A (static limits)"));
+    setRateLimitResetTime(isPaid ? QStringLiteral("N/A (paid tier limits)")
+                                 : QStringLiteral("N/A (free tier limits)"));
 }

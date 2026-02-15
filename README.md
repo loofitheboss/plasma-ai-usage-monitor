@@ -1,8 +1,10 @@
 # AI Usage Monitor — KDE Plasma 6 Widget
 
-A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, and costs across multiple providers. Sits in your panel as a compact icon with a colored status badge and expands into a detailed popup with per-provider stats, usage history charts, and budget tracking.
+A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, and costs across multiple providers. Sits in your panel as a compact icon with a colored status badge and expands into a detailed popup with per-provider stats, usage history charts, and budget tracking. Also tracks subscription-based AI coding tool usage limits for Claude Code, Codex CLI, and GitHub Copilot.
 
 **Supported providers:** OpenAI, Anthropic (Claude), Google Gemini, Mistral AI, DeepSeek, Groq, xAI (Grok)
+
+**Supported subscription tools:** Claude Code, OpenAI Codex CLI, GitHub Copilot
 
 ## Features
 
@@ -24,6 +26,27 @@ A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, an
 - **Data export** — CSV and JSON export of usage history (copies to clipboard)
 - **Accessibility** — Screen reader annotations on provider cards, cost summary, and panel icon
 - **Per-provider configuration** — Enable/disable providers independently, select models, set refresh intervals, configure budgets
+
+## Subscription Tool Tracking
+
+In addition to API providers, the widget tracks usage limits for subscription-based AI coding tools:
+
+### Claude Code
+- Monitors `~/.claude/` directory for activity via filesystem watcher
+- Plans: **Pro** (45/5h, 225/week), **Max 5x** (225/5h, 1125/week), **Max 20x** (900/5h, 4500/week)
+- Dual limits: 5-hour session window + weekly rolling window
+
+### Codex CLI
+- Monitors `~/.codex/` directory for activity via filesystem watcher
+- Plans: **Plus** (45/5h), **Pro** (300/5h), **Business** (45/5h)
+- Single 5-hour rolling window
+
+### GitHub Copilot
+- Tracks monthly premium request limits (resets 1st of each month UTC)
+- Plans: **Free** (50/mo), **Pro** (300/mo), **Pro+** (1500/mo), **Business** (300/mo), **Enterprise** (1000/mo)
+- Optional GitHub API integration for organization-level seat metrics (requires PAT with `manage_billing:copilot` scope)
+
+**Note:** None of these tools expose public APIs for individual quota checking. Usage is self-tracked locally via filesystem monitoring and manual counting, with limits auto-populated from plan presets.
 
 ## What Each Provider Reports
 
@@ -120,7 +143,7 @@ plasmashell --replace &
 
 ## Configuration
 
-Right-click the widget and select **Configure** to access five settings tabs:
+Right-click the widget and select **Configure** to access six settings tabs:
 
 ### General
 
@@ -152,6 +175,14 @@ Each provider has:
 - **Per-provider daily and monthly budgets** — Set spending limits in dollars (e.g., $10.50/day, $100.00/month)
 - **Warning percentage** — Trigger a warning at this percentage of budget (default 80%)
 
+### Subscriptions
+
+- **Claude Code** — Enable/disable, plan tier (Pro/Max 5x/Max 20x), custom usage limit, notifications
+- **Codex CLI** — Enable/disable, plan tier (Plus/Pro/Business), custom usage limit, notifications
+- **GitHub Copilot** — Enable/disable, plan tier (Free/Pro/Pro+/Business/Enterprise), custom limit, notifications
+- **GitHub API (optional)** — Personal access token and organization name for Copilot seat metrics
+- **Auto-detect** — Each tool shows a detection badge (detected/not found) based on installed binaries and config directories
+
 ### History
 
 - **Enable/disable** usage history recording
@@ -163,7 +194,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.0.0)
+├── CMakeLists.txt                  # Root build system (v2.2.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -171,13 +202,14 @@ plasma-ai-usage-monitor/
 │   ├── metadata.json               # Plasma 6 plugin metadata
 │   └── contents/
 │       ├── config/
-│       │   ├── config.qml          # Config tab definitions (5 tabs)
+│       │   ├── config.qml          # Config tab definitions (6 tabs)
 │       │   └── main.xml            # KConfigXT schema
 │       └── ui/
-│           ├── main.qml            # Root PlasmoidItem (providers, timers, notifications)
+│           ├── main.qml            # Root PlasmoidItem (providers, tools, timers, notifications)
 │           ├── CompactRepresentation.qml  # Panel icon (3 display modes)
-│           ├── FullRepresentation.qml     # Popup with Live/History tabs
+│           ├── FullRepresentation.qml     # Popup with Live/History tabs + subscription tools
 │           ├── ProviderCard.qml           # Collapsible provider stats card
+│           ├── SubscriptionToolCard.qml   # Subscription tool usage card
 │           ├── CostSummaryCard.qml        # Aggregate cost breakdown
 │           ├── UsageChart.qml             # Canvas line/area chart
 │           ├── TrendSummary.qml           # Summary stats grid
@@ -185,11 +217,12 @@ plasma-ai-usage-monitor/
 │           ├── configProviders.qml
 │           ├── configAlerts.qml
 │           ├── configBudget.qml
+│           ├── configSubscriptions.qml    # Subscription tool settings
 │           └── configHistory.qml
 └── plugin/                         # C++ QML plugin
     ├── CMakeLists.txt
     ├── qmldir                      # QML module registration
-    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (11 types)
+    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (15 types)
     ├── secretsmanager.{h,cpp}      # KWallet wrapper
     ├── clipboardhelper.h            # Clipboard copy/paste helper
     ├── providerbackend.{h,cpp}     # Abstract base class + cost estimation
@@ -201,12 +234,16 @@ plasma-ai-usage-monitor/
     ├── deepseekprovider.{h,cpp}    # DeepSeek (extends OpenAICompatibleProvider)
     ├── groqprovider.{h,cpp}        # Groq (extends OpenAICompatibleProvider)
     ├── xaiprovider.{h,cpp}         # xAI/Grok (extends OpenAICompatibleProvider)
+    ├── subscriptiontoolbackend.{h,cpp}   # Abstract base for subscription tools
+    ├── claudecodemonitor.{h,cpp}         # Claude Code usage monitor
+    ├── codexclimonitor.{h,cpp}           # Codex CLI usage monitor
+    ├── copilotmonitor.{h,cpp}            # GitHub Copilot usage monitor
     └── usagedatabase.{h,cpp}       # SQLite usage history persistence
 ```
 
 ### C++ Plugin
 
-The QML plugin (`com.github.loofi.aiusagemonitor`) provides 11 types:
+The QML plugin (`com.github.loofi.aiusagemonitor`) provides 15 types:
 
 - **`SecretsManager`** — Wraps KWallet for secure API key storage. Uses wallet folder `"ai-usage-monitor"` with async open and a pending operations queue.
 - **`ProviderBackend`** (abstract) — Base class with properties for token usage, rate limits, cost tracking (real and estimated), budget management, error tracking, and custom base URL support. Includes per-model pricing tables and `updateEstimatedCost()` for token-based cost estimation. Signals for quota warnings, budget exceeded, provider disconnect/reconnect.
@@ -219,14 +256,19 @@ The QML plugin (`com.github.loofi.aiusagemonitor`) provides 11 types:
 - **`GroqProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 5 Groq models.
 - **`XAIProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for grok-3, grok-3-mini, grok-2.
 - **`ClipboardHelper`** — Simple helper class for copying text to the system clipboard (replaces the previous TextArea workaround).
-- **`UsageDatabase`** — SQLite persistence with WAL mode, configurable retention, auto-pruning, and CSV/JSON export.
+- **`UsageDatabase`** — SQLite persistence with WAL mode, configurable retention, auto-pruning, and CSV/JSON export. Also stores subscription tool usage snapshots.
+- **`SubscriptionToolBackend`** (abstract) — Base class for subscription-based AI coding tool monitors. Tracks usage counts against fixed limits with rolling time windows (5-hour, daily, weekly, monthly). Supports dual primary/secondary periods, automatic period resets, and 80% limit warnings.
+- **`ClaudeCodeMonitor`** — Monitors Claude Code CLI usage via `QFileSystemWatcher` on `~/.claude/`. Supports Pro/Max 5x/Max 20x plans with dual 5-hour session and weekly rolling windows.
+- **`CodexCliMonitor`** — Monitors OpenAI Codex CLI usage via `QFileSystemWatcher` on `~/.codex/`. Supports Plus/Pro/Business plans with 5-hour rolling windows.
+- **`CopilotMonitor`** — Monitors GitHub Copilot premium request usage with monthly period (resets 1st of month UTC). Supports Free/Pro/Pro+/Business/Enterprise plans. Optionally queries GitHub REST API for organization-level Copilot billing metrics.
 
 ### QML Frontend
 
-- **`main.qml`** — Instantiates 7 C++ backends, manages per-provider refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase. Uses a single `allProviders` array (with `configKey`) to drive tooltips, refresh, and API key loading — zero duplicated provider lists.
+- **`main.qml`** — Instantiates 7 C++ API backends + 3 subscription tool monitors, manages per-provider refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase. Uses `allProviders` and `allSubscriptionTools` arrays to drive tooltips, refresh, and notification routing.
 - **`CompactRepresentation.qml`** — Panel icon with 3 display modes (icon with status badge, cost display, provider count), smooth animations, and screen reader accessibility
-- **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, data-driven provider cards via Repeater, cost summary, chart, trend summary, and export buttons
+- **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, data-driven provider cards via Repeater, subscription tool cards section, cost summary, chart, trend summary, and export buttons
 - **`ProviderCard.qml`** — Collapsible card showing connection status, token usage, cost (real or estimated), rate limit bars, budget progress bars, error badges with expandable details, relative time display, and accessibility annotations
+- **`SubscriptionToolCard.qml`** — Card for subscription tool usage showing plan tier badge, color-coded progress bars for primary and secondary limits, time-until-reset countdown, last activity, limit-reached warning, and manual increment/reset buttons
 
 ## API Key Requirements
 

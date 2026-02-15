@@ -296,6 +296,34 @@ ColumnLayout {
                 }
             }
 
+            // DeepSeek balance display
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !card.collapsed && (card.backend?.connected ?? false)
+                         && card.providerName === "DeepSeek"
+                         && (card.backend?.balance ?? 0) > 0
+                spacing: Kirigami.Units.smallSpacing
+
+                PlasmaComponents.Label {
+                    text: i18n("Account Balance:")
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    opacity: 0.7
+                }
+
+                Item { Layout.fillWidth: true }
+
+                PlasmaComponents.Label {
+                    text: "$" + (card.backend?.balance ?? 0).toFixed(2)
+                    font.bold: true
+                    color: {
+                        var b = card.backend?.balance ?? 0;
+                        if (b < 1) return Kirigami.Theme.negativeTextColor;
+                        if (b < 5) return Kirigami.Theme.neutralTextColor;
+                        return Kirigami.Theme.positiveTextColor;
+                    }
+                }
+            }
+
             // Budget progress bars
             ColumnLayout {
                 Layout.fillWidth: true

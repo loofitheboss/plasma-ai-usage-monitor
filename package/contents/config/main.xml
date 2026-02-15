@@ -252,4 +252,58 @@
             <label>Number of days to keep usage history</label>
         </entry>
     </group>
+
+    <group name="Subscriptions">
+        <!-- Claude Code -->
+        <entry name="claudeCodeEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="claudeCodePlan" type="Int">
+            <default>0</default>
+            <label>Plan index: 0=Pro, 1=Max 5x, 2=Max 20x</label>
+        </entry>
+        <entry name="claudeCodeCustomLimit" type="Int">
+            <default>0</default>
+            <label>Custom usage limit per 5h period (0 = use plan default)</label>
+        </entry>
+        <entry name="claudeCodeNotifications" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <!-- Codex CLI -->
+        <entry name="codexEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="codexPlan" type="Int">
+            <default>0</default>
+            <label>Plan index: 0=Plus, 1=Pro, 2=Business</label>
+        </entry>
+        <entry name="codexCustomLimit" type="Int">
+            <default>0</default>
+            <label>Custom usage limit per 5h period (0 = use plan default)</label>
+        </entry>
+        <entry name="codexNotifications" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <!-- GitHub Copilot -->
+        <entry name="copilotEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="copilotPlan" type="Int">
+            <default>0</default>
+            <label>Plan index: 0=Free, 1=Pro, 2=Pro+, 3=Business, 4=Enterprise</label>
+        </entry>
+        <entry name="copilotCustomLimit" type="Int">
+            <default>0</default>
+            <label>Custom monthly premium request limit (0 = use plan default)</label>
+        </entry>
+        <entry name="copilotNotifications" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="copilotOrgName" type="String">
+            <default></default>
+            <label>GitHub organization name for Copilot billing API</label>
+        </entry>
+    </group>
 </kcfg>

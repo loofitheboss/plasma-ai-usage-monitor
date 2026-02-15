@@ -23,6 +23,11 @@ ConfigModel {
         source: "configBudget.qml"
     }
     ConfigCategory {
+        name: i18n("Subscriptions")
+        icon: "view-task"
+        source: "configSubscriptions.qml"
+    }
+    ConfigCategory {
         name: i18n("History")
         icon: "office-chart-line"
         source: "configHistory.qml"

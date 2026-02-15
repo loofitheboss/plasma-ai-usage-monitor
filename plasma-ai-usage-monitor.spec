@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        2.1.0
+Version:        2.2.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -58,6 +58,21 @@ Features:
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
 
 %changelog
+* Sun Feb 15 2026 Loofi <loofi@github.com> - 2.2.0-1
+- Add subscription tool tracking for Claude Code, Codex CLI, and GitHub Copilot
+- Add SubscriptionToolBackend abstract base class with rolling time windows
+- Add ClaudeCodeMonitor with 5h session + weekly dual limits (Pro/Max5x/Max20x)
+- Add CodexCliMonitor with 5h window (Plus/Pro/Business plans)
+- Add CopilotMonitor with monthly limits + optional GitHub API org metrics
+- Add SubscriptionToolCard.qml with progress bars and time-until-reset
+- Add configSubscriptions.qml with per-tool plan/limit/notification settings
+- Add subscription_tool_usage table to SQLite database
+- Fix token accumulation bug in OpenAICompatibleProvider (session-level tracking)
+- Fix estimatedMonthlyCost returning 0 for non-OpenAI providers
+- Fix budget notifications not firing from direct cost setters
+- Add DeepSeek account balance display in ProviderCard
+- Add Google Gemini free/paid tier selector with tier-aware rate limits
+
 * Sat Feb 15 2026 Loofi <loofi@github.com> - 2.1.0-1
 - Add OpenAICompatibleProvider base class, dedup Mistral/Groq/xAI/DeepSeek
 - Add token-based cost estimation with per-model pricing (~30 models)

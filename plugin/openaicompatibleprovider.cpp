@@ -95,10 +95,15 @@ void OpenAICompatibleProvider::parseUsageBody(QNetworkReply *reply)
         if (!usage.isEmpty()) {
             qint64 promptTokens = usage.value(QStringLiteral("prompt_tokens")).toInteger(0);
             qint64 completionTokens = usage.value(QStringLiteral("completion_tokens")).toInteger(0);
-            // Accumulate tokens across refreshes for session tracking
-            setInputTokens(inputTokens() + promptTokens);
-            setOutputTokens(outputTokens() + completionTokens);
-            setRequestCount(requestCount() + 1);
+            // Track tokens from this refresh only (not accumulated)
+            // The monitoring request itself uses ~1 token; accumulating would
+            // inflate counts across refreshes and misrepresent actual usage.
+            m_sessionInputTokens += promptTokens;
+            m_sessionOutputTokens += completionTokens;
+            m_sessionRequestCount++;
+            setInputTokens(m_sessionInputTokens);
+            setOutputTokens(m_sessionOutputTokens);
+            setRequestCount(m_sessionRequestCount);
         }
     }
 }

@@ -11,6 +11,10 @@
 #include "usagedatabase.h"
 #include "clipboardhelper.h"
 #include "updatechecker.h"
+#include "subscriptiontoolbackend.h"
+#include "claudecodemonitor.h"
+#include "codexclimonitor.h"
+#include "copilotmonitor.h"
 
 #include <QQmlEngine>
 
@@ -31,7 +35,14 @@ void AiUsagePlugin::registerTypes(const char *uri)
     qmlRegisterType<ClipboardHelper>(uri, 1, 0, "ClipboardHelper");
     qmlRegisterType<UpdateChecker>(uri, 1, 0, "UpdateChecker");
 
-    // Register abstract base as uncreatable (for type info in QML)
+    // Subscription tool monitors
+    qmlRegisterType<ClaudeCodeMonitor>(uri, 1, 0, "ClaudeCodeMonitor");
+    qmlRegisterType<CodexCliMonitor>(uri, 1, 0, "CodexCliMonitor");
+    qmlRegisterType<CopilotMonitor>(uri, 1, 0, "CopilotMonitor");
+
+    // Register abstract base classes as uncreatable (for type info in QML)
     qmlRegisterUncreatableType<ProviderBackend>(uri, 1, 0, "ProviderBackend",
         QStringLiteral("ProviderBackend is abstract; use a specific provider type."));
+    qmlRegisterUncreatableType<SubscriptionToolBackend>(uri, 1, 0, "SubscriptionToolBackend",
+        QStringLiteral("SubscriptionToolBackend is abstract; use a specific monitor type."));
 }

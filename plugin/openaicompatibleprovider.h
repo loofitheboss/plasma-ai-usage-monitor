@@ -13,7 +13,7 @@
  * - POST /chat/completions with max_tokens=1 to read rate limit headers
  * - Parsing x-ratelimit-* response headers
  * - Parsing usage object from response body (tokens)
- * - Accumulating token counts across refreshes
+ * - Session-level token tracking (accumulated within one app session)
  *
  * Subclasses must provide: name(), iconName(), defaultModel(), baseUrl()
  * Subclasses can override refresh() to add extra API calls (e.g., balance endpoint)
@@ -57,6 +57,11 @@ private:
 
     QString m_model;
     int m_pendingRequests = 0;
+
+    // Session-level token tracking (accumulated across refreshes within one session)
+    qint64 m_sessionInputTokens = 0;
+    qint64 m_sessionOutputTokens = 0;
+    int m_sessionRequestCount = 0;
 };
 
 #endif // OPENAICOMPATIBLEPROVIDER_H

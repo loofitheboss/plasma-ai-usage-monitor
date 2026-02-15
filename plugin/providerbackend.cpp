@@ -86,12 +86,17 @@ double ProviderBackend::monthlyCost() const { return m_monthlyCost; }
 
 double ProviderBackend::estimatedMonthlyCost() const
 {
-    if (m_dailyCost <= 0) return 0.0;
+    if (m_dailyCost <= 0 && m_monthlyCost <= 0) return 0.0;
     int dayOfMonth = QDate::currentDate().day();
     int daysInMonth = QDate::currentDate().daysInMonth();
     if (dayOfMonth == 0) return 0.0;
-    // Project current daily cost to full month
-    return (m_monthlyCost / dayOfMonth) * daysInMonth;
+
+    // If we have real monthly cost data (e.g. OpenAI billing API), project it
+    if (m_monthlyCost > 0) {
+        return (m_monthlyCost / dayOfMonth) * daysInMonth;
+    }
+    // Fallback for estimated-cost providers: project daily cost to full month
+    return m_dailyCost * daysInMonth;
 }
 
 void ProviderBackend::setDailyBudget(double budget)
@@ -110,8 +115,14 @@ void ProviderBackend::setMonthlyBudget(double budget)
     }
 }
 
-void ProviderBackend::setDailyCost(double cost) { m_dailyCost = cost; }
-void ProviderBackend::setMonthlyCost(double cost) { m_monthlyCost = cost; }
+void ProviderBackend::setDailyCost(double cost) {
+    m_dailyCost = cost;
+    checkBudgetLimits();
+}
+void ProviderBackend::setMonthlyCost(double cost) {
+    m_monthlyCost = cost;
+    checkBudgetLimits();
+}
 
 void ProviderBackend::checkBudgetLimits()
 {

@@ -114,6 +114,25 @@ void UsageDatabase::createTables()
         "CREATE INDEX IF NOT EXISTS idx_ratelimit_provider_time "
         "ON rate_limit_events(provider, timestamp)"
     ));
+
+    // Subscription tool usage snapshots
+    query.exec(QStringLiteral(
+        "CREATE TABLE IF NOT EXISTS subscription_tool_usage ("
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  timestamp DATETIME DEFAULT (datetime('now')),"
+        "  tool_name TEXT NOT NULL,"
+        "  usage_count INTEGER DEFAULT 0,"
+        "  usage_limit INTEGER DEFAULT 0,"
+        "  period_type TEXT NOT NULL,"
+        "  plan_tier TEXT DEFAULT '',"
+        "  limit_reached BOOLEAN DEFAULT 0"
+        ")"
+    ));
+
+    query.exec(QStringLiteral(
+        "CREATE INDEX IF NOT EXISTS idx_tool_usage_name_time "
+        "ON subscription_tool_usage(tool_name, timestamp)"
+    ));
 }
 
 void UsageDatabase::recordSnapshot(const QString &provider,
@@ -180,6 +199,38 @@ void UsageDatabase::recordRateLimitEvent(const QString &provider,
 
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to record rate limit event:" << query.lastError().text();
+    }
+}
+
+void UsageDatabase::recordToolSnapshot(const QString &toolName,
+                                        int usageCount,
+                                        int usageLimit,
+                                        const QString &periodType,
+                                        const QString &planTier,
+                                        bool limitReached)
+{
+    if (!m_enabled)
+        return;
+
+    initDatabase();
+    if (!m_initialized)
+        return;
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "INSERT INTO subscription_tool_usage "
+        "(tool_name, usage_count, usage_limit, period_type, plan_tier, limit_reached) "
+        "VALUES (?, ?, ?, ?, ?, ?)"
+    ));
+    query.addBindValue(toolName);
+    query.addBindValue(usageCount);
+    query.addBindValue(usageLimit);
+    query.addBindValue(periodType);
+    query.addBindValue(planTier);
+    query.addBindValue(limitReached ? 1 : 0);
+
+    if (!query.exec()) {
+        qWarning() << "UsageDatabase: Failed to record tool snapshot:" << query.lastError().text();
     }
 }
 
@@ -397,6 +448,14 @@ void UsageDatabase::pruneOldData()
     query.addBindValue(cutoff.toString(Qt::ISODate));
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to prune events:" << query.lastError().text();
+    }
+
+    query.prepare(QStringLiteral(
+        "DELETE FROM subscription_tool_usage WHERE timestamp < ?"
+    ));
+    query.addBindValue(cutoff.toString(Qt::ISODate));
+    if (!query.exec()) {
+        qWarning() << "UsageDatabase: Failed to prune tool usage:" << query.lastError().text();
     }
 
     // Reclaim space

@@ -167,6 +167,32 @@ PlasmaExtras.Representation {
                             }
                         }
 
+                        // ── Subscription Tools Section ──
+                        PlasmaExtras.Heading {
+                            level: 5
+                            text: i18n("Subscription Tools")
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.smallSpacing
+                            Layout.topMargin: Kirigami.Units.largeSpacing
+                            visible: root.enabledToolCount > 0
+                            opacity: 0.7
+                        }
+
+                        Repeater {
+                            model: root.allSubscriptionTools ?? []
+
+                            SubscriptionToolCard {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: Kirigami.Units.smallSpacing
+                                Layout.rightMargin: Kirigami.Units.smallSpacing
+                                visible: modelData.enabled
+                                toolName: modelData.name
+                                toolIcon: modelData.monitor?.iconName ?? "utilities-terminal"
+                                toolColor: modelData.monitor?.toolColor ?? Kirigami.Theme.textColor
+                                monitor: modelData.monitor ?? null
+                            }
+                        }
+
                         Item { Layout.fillHeight: true }
                     }
                 }
@@ -278,7 +304,10 @@ PlasmaExtras.Representation {
             || plasmoid.configuration.mistralEnabled
             || plasmoid.configuration.deepseekEnabled
             || plasmoid.configuration.groqEnabled
-            || plasmoid.configuration.xaiEnabled;
+            || plasmoid.configuration.xaiEnabled
+            || plasmoid.configuration.claudeCodeEnabled
+            || plasmoid.configuration.codexEnabled
+            || plasmoid.configuration.copilotEnabled;
     }
 
     function hasCostData() {

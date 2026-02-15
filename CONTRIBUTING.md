@@ -68,16 +68,21 @@ plasmawindowed com.github.loofi.aiusagemonitor
 | `GroqProvider` | `plugin/groqprovider.{h,cpp}` | Groq (extends `OpenAICompatibleProvider`) |
 | `XAIProvider` | `plugin/xaiprovider.{h,cpp}` | xAI/Grok (extends `OpenAICompatibleProvider`) |
 | `ClipboardHelper` | `plugin/clipboardhelper.h` | Clipboard copy/paste helper for data export |
-| `UsageDatabase` | `plugin/usagedatabase.{h,cpp}` | SQLite persistence for usage history, CSV/JSON export |
+| `UsageDatabase` | `plugin/usagedatabase.{h,cpp}` | SQLite persistence for usage history and subscription tool snapshots |
+| `SubscriptionToolBackend` | `plugin/subscriptiontoolbackend.{h,cpp}` | Abstract base for subscription tool monitors (rolling time windows, dual limits, limit warnings) |
+| `ClaudeCodeMonitor` | `plugin/claudecodemonitor.{h,cpp}` | Claude Code CLI usage monitor (filesystem watching, Pro/Max5x/Max20x plans) |
+| `CodexCliMonitor` | `plugin/codexclimonitor.{h,cpp}` | OpenAI Codex CLI usage monitor (filesystem watching, Plus/Pro/Business plans) |
+| `CopilotMonitor` | `plugin/copilotmonitor.{h,cpp}` | GitHub Copilot usage monitor (monthly limits, optional GitHub API org metrics) |
 
 ### QML Components
 
 | Component | Purpose |
 |-----------|---------|
-| `main.qml` | Root PlasmoidItem — instantiates 7 backends, per-provider timers, notifications, database, single `allProviders` array |
+| `main.qml` | Root PlasmoidItem — instantiates 7 backends + 3 subscription tool monitors, per-provider timers, notifications, database, `allProviders` and `allSubscriptionTools` arrays |
 | `CompactRepresentation.qml` | Panel icon with 3 display modes (icon/cost/count) and accessibility |
-| `FullRepresentation.qml` | Popup with status bar, Live/History tabs, data-driven provider cards via Repeater, export buttons |
+| `FullRepresentation.qml` | Popup with status bar, Live/History tabs, data-driven provider cards and subscription tool cards via Repeater, export buttons |
 | `ProviderCard.qml` | Collapsible provider stats card with budget bars, cost estimation labels, error details, and accessibility |
+| `SubscriptionToolCard.qml` | Subscription tool usage card with progress bars, time-until-reset, dual limits, manual increment/reset |
 | `CostSummaryCard.qml` | Aggregate cost breakdown across all providers with accessibility |
 | `UsageChart.qml` | Canvas line/area chart (cost/tokens/requests/rateLimit) |
 | `TrendSummary.qml` | Summary stats grid for a time range |
@@ -85,6 +90,7 @@ plasmawindowed com.github.loofi.aiusagemonitor
 | `configProviders.qml` | Provider enable/key/model/proxy settings with HTTPS security warnings |
 | `configAlerts.qml` | Thresholds, notification types, per-provider toggles, cooldown, DND |
 | `configBudget.qml` | Per-provider daily/monthly budgets |
+| `configSubscriptions.qml` | Subscription tool enable/plan/limit settings with auto-detect |
 | `configHistory.qml` | History enable/retention/prune settings |
 
 ## Coding Standards
