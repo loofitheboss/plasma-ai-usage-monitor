@@ -5,6 +5,13 @@
 AnthropicProvider::AnthropicProvider(QObject *parent)
     : ProviderBackend(parent)
 {
+    // Register model pricing ($ per 1M tokens) — Anthropic pricing as of 2025
+    registerModelPricing(QStringLiteral("claude-sonnet-4-20250514"), 3.0, 15.0);
+    registerModelPricing(QStringLiteral("claude-3-7-sonnet"), 3.0, 15.0);
+    registerModelPricing(QStringLiteral("claude-3-5-haiku"), 0.80, 4.0);
+    registerModelPricing(QStringLiteral("claude-3-5-sonnet"), 3.0, 15.0);
+    registerModelPricing(QStringLiteral("claude-3-opus"), 15.0, 75.0);
+    registerModelPricing(QStringLiteral("claude-3-haiku"), 0.25, 1.25);
 }
 
 QString AnthropicProvider::model() const { return m_model; }

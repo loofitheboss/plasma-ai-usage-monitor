@@ -2,6 +2,7 @@ set(aiusagemonitor_SRCS
     aiusageplugin.cpp
     secretsmanager.cpp
     providerbackend.cpp
+    openaicompatibleprovider.cpp
     openaiprovider.cpp
     anthropicprovider.cpp
     googleprovider.cpp
@@ -16,6 +17,7 @@ set(aiusagemonitor_HDRS
     aiusageplugin.h
     secretsmanager.h
     providerbackend.h
+    openaicompatibleprovider.h
     openaiprovider.h
     anthropicprovider.h
     googleprovider.h
@@ -24,6 +26,7 @@ set(aiusagemonitor_HDRS
     groqprovider.h
     xaiprovider.h
     usagedatabase.h
+    clipboardhelper.h
 )
 
 add_library(aiusagemonitorplugin SHARED ${aiusagemonitor_SRCS} ${aiusagemonitor_HDRS})

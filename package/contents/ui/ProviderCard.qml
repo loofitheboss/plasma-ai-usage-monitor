@@ -224,9 +224,21 @@ ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing
 
                 PlasmaComponents.Label {
-                    text: i18n("Cost:")
+                    text: (card.backend?.isEstimatedCost ?? false) ? i18n("Est. Cost:") : i18n("Cost:")
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
                     opacity: 0.7
+                }
+
+                // Estimated cost indicator
+                PlasmaComponents.Label {
+                    visible: card.backend?.isEstimatedCost ?? false
+                    text: "~"
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    font.italic: true
+                    opacity: 0.5
+                    PlasmaComponents.ToolTip {
+                        text: i18n("Estimated from token usage and model pricing. Not from billing API.")
+                    }
                 }
 
                 Item { Layout.fillWidth: true }

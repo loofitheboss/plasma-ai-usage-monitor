@@ -309,13 +309,74 @@ PlasmoidItem {
 
     // ── Refresh Timers ──
 
-    // Global refresh timer (used when no per-provider interval is set)
+    // Helper to get effective interval for a provider (0 = use global)
+    function effectiveInterval(providerInterval) {
+        return (providerInterval > 0 ? providerInterval : plasmoid.configuration.refreshInterval) * 1000;
+    }
+
+    // Per-provider refresh timers
     Timer {
-        id: refreshTimer
-        interval: plasmoid.configuration.refreshInterval * 1000
-        running: true
+        id: openaiRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.openaiRefreshInterval)
+        running: plasmoid.configuration.openaiEnabled
         repeat: true
-        onTriggered: refreshAll()
+        onTriggered: {
+            if (openaiBackend.hasApiKey()) openaiBackend.refresh();
+        }
+    }
+    Timer {
+        id: anthropicRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.anthropicRefreshInterval)
+        running: plasmoid.configuration.anthropicEnabled
+        repeat: true
+        onTriggered: {
+            if (anthropicBackend.hasApiKey()) anthropicBackend.refresh();
+        }
+    }
+    Timer {
+        id: googleRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.googleRefreshInterval)
+        running: plasmoid.configuration.googleEnabled
+        repeat: true
+        onTriggered: {
+            if (googleBackend.hasApiKey()) googleBackend.refresh();
+        }
+    }
+    Timer {
+        id: mistralRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.mistralRefreshInterval)
+        running: plasmoid.configuration.mistralEnabled
+        repeat: true
+        onTriggered: {
+            if (mistralBackend.hasApiKey()) mistralBackend.refresh();
+        }
+    }
+    Timer {
+        id: deepseekRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.deepseekRefreshInterval)
+        running: plasmoid.configuration.deepseekEnabled
+        repeat: true
+        onTriggered: {
+            if (deepseekBackend.hasApiKey()) deepseekBackend.refresh();
+        }
+    }
+    Timer {
+        id: groqRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.groqRefreshInterval)
+        running: plasmoid.configuration.groqEnabled
+        repeat: true
+        onTriggered: {
+            if (groqBackend.hasApiKey()) groqBackend.refresh();
+        }
+    }
+    Timer {
+        id: xaiRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.xaiRefreshInterval)
+        running: plasmoid.configuration.xaiEnabled
+        repeat: true
+        onTriggered: {
+            if (xaiBackend.hasApiKey()) xaiBackend.refresh();
+        }
     }
 
     // Daily prune timer (runs once every 24h)
@@ -540,7 +601,14 @@ PlasmoidItem {
         function onXaiModelChanged() { xaiBackend.model = plasmoid.configuration.xaiModel; }
 
         function onRefreshIntervalChanged() {
-            refreshTimer.interval = plasmoid.configuration.refreshInterval * 1000;
+            // Update all per-provider timers that use the global default (interval == 0)
+            openaiRefreshTimer.interval = effectiveInterval(plasmoid.configuration.openaiRefreshInterval);
+            anthropicRefreshTimer.interval = effectiveInterval(plasmoid.configuration.anthropicRefreshInterval);
+            googleRefreshTimer.interval = effectiveInterval(plasmoid.configuration.googleRefreshInterval);
+            mistralRefreshTimer.interval = effectiveInterval(plasmoid.configuration.mistralRefreshInterval);
+            deepseekRefreshTimer.interval = effectiveInterval(plasmoid.configuration.deepseekRefreshInterval);
+            groqRefreshTimer.interval = effectiveInterval(plasmoid.configuration.groqRefreshInterval);
+            xaiRefreshTimer.interval = effectiveInterval(plasmoid.configuration.xaiRefreshInterval);
         }
     }
 }

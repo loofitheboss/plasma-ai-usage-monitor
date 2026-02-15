@@ -2,6 +2,7 @@
 #include <QNetworkRequest>
 #include <QUrlQuery>
 #include <QDateTime>
+#include <QTimeZone>
 #include <QDebug>
 
 OpenAIProvider::OpenAIProvider(QObject *parent)
@@ -41,6 +42,7 @@ void OpenAIProvider::refresh()
 
     fetchUsage();
     fetchCosts();
+    fetchMonthlyCosts();
 }
 
 void OpenAIProvider::fetchUsage()
@@ -213,6 +215,73 @@ void OpenAIProvider::onCostsReply(QNetworkReply *reply)
     double costDollars = totalCost / 100.0; // API returns cents
     setCost(costDollars);
     setDailyCost(costDollars); // 24h window = daily cost
+    checkAllDone();
+}
+
+void OpenAIProvider::fetchMonthlyCosts()
+{
+    // Query costs from the start of the current month
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    QDate today = now.date();
+    QDate monthStart(today.year(), today.month(), 1);
+    QDateTime monthStartDt(monthStart.startOfDay(QTimeZone::UTC));
+
+    QUrl url(QStringLiteral("%1/organization/costs").arg(effectiveBaseUrl(BASE_URL)));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("start_time"), QString::number(monthStartDt.toSecsSinceEpoch()));
+    query.addQueryItem(QStringLiteral("end_time"), QString::number(now.toSecsSinceEpoch()));
+    query.addQueryItem(QStringLiteral("bucket_width"), QStringLiteral("1d"));
+
+    if (!m_projectId.isEmpty()) {
+        query.addQueryItem(QStringLiteral("project_ids"), m_projectId);
+    }
+
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
+    request.setRawHeader("Content-Type", "application/json");
+
+    m_pendingRequests++;
+    QNetworkReply *reply = networkManager()->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        onMonthlyCostsReply(reply);
+    });
+}
+
+void OpenAIProvider::onMonthlyCostsReply(QNetworkReply *reply)
+{
+    reply->deleteLater();
+    m_pendingRequests--;
+
+    if (reply->error() != QNetworkReply::NoError) {
+        // Non-fatal: daily cost data may still be available
+        qWarning() << "AI Usage Monitor: OpenAI monthly costs API error:" << reply->errorString();
+        checkAllDone();
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (doc.isNull()) {
+        checkAllDone();
+        return;
+    }
+
+    QJsonObject root = doc.object();
+    QJsonArray buckets = root.value(QStringLiteral("data")).toArray();
+
+    double totalCost = 0.0;
+    for (const QJsonValue &bucket : buckets) {
+        QJsonArray results = bucket.toObject().value(QStringLiteral("result")).toArray();
+        for (const QJsonValue &result : results) {
+            QJsonObject r = result.toObject();
+            totalCost += r.value(QStringLiteral("amount")).toDouble(0.0);
+        }
+    }
+
+    double costDollars = totalCost / 100.0; // API returns cents
+    setMonthlyCost(costDollars);
     checkAllDone();
 }
 

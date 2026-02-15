@@ -6,11 +6,15 @@
 #include <QDateTime>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QHash>
 
 /**
  * Abstract base class for AI provider backends.
  * Exposes usage, rate limits, cost data, and budget tracking to QML.
  * Each provider subclass implements its own API-specific logic.
+ *
+ * Includes a token-based cost estimation system for providers without
+ * billing APIs. Subclasses can register model pricing via registerModelPricing().
  */
 class ProviderBackend : public QObject
 {
@@ -33,6 +37,7 @@ class ProviderBackend : public QObject
     Q_PROPERTY(qint64 totalTokens READ totalTokens NOTIFY dataUpdated)
     Q_PROPERTY(int requestCount READ requestCount NOTIFY dataUpdated)
     Q_PROPERTY(double cost READ cost NOTIFY dataUpdated)
+    Q_PROPERTY(bool isEstimatedCost READ isEstimatedCost NOTIFY dataUpdated)
 
     // Rate limits
     Q_PROPERTY(int rateLimitRequests READ rateLimitRequests NOTIFY dataUpdated)
@@ -76,6 +81,7 @@ public:
     qint64 totalTokens() const;
     int requestCount() const;
     double cost() const;
+    bool isEstimatedCost() const;
 
     // Rate limits
     int rateLimitRequests() const;
@@ -147,6 +153,19 @@ protected:
     // Budget checking after cost update
     void checkBudgetLimits();
 
+    // Token-based cost estimation
+    struct ModelPricing {
+        double inputPricePerMToken;   // $ per 1M input tokens
+        double outputPricePerMToken;  // $ per 1M output tokens
+    };
+
+    /// Register pricing for a model name. Used for cost estimation when no billing API is available.
+    void registerModelPricing(const QString &modelName, double inputPricePerMToken, double outputPricePerMToken);
+
+    /// Calculate and set estimated cost from accumulated tokens using registered pricing.
+    /// Call this after updating token counts. Only sets cost if no real cost has been set.
+    void updateEstimatedCost(const QString &currentModel);
+
 private:
     QNetworkAccessManager *m_networkManager;
     QString m_apiKey;
@@ -177,6 +196,9 @@ private:
     QDateTime m_lastRefreshed;
     int m_refreshCount = 0;
     bool m_wasConnected = false; // for disconnect/reconnect tracking
+    bool m_isEstimatedCost = false;
+
+    QHash<QString, ModelPricing> m_modelPricing;
 };
 
 #endif // PROVIDERBACKEND_H

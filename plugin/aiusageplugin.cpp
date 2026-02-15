@@ -9,6 +9,7 @@
 #include "groqprovider.h"
 #include "xaiprovider.h"
 #include "usagedatabase.h"
+#include "clipboardhelper.h"
 
 #include <QQmlEngine>
 
@@ -26,6 +27,7 @@ void AiUsagePlugin::registerTypes(const char *uri)
     qmlRegisterType<GroqProvider>(uri, 1, 0, "GroqProvider");
     qmlRegisterType<XAIProvider>(uri, 1, 0, "XAIProvider");
     qmlRegisterType<UsageDatabase>(uri, 1, 0, "UsageDatabase");
+    qmlRegisterType<ClipboardHelper>(uri, 1, 0, "ClipboardHelper");
 
     // Register abstract base as uncreatable (for type info in QML)
     qmlRegisterUncreatableType<ProviderBackend>(uri, 1, 0, "ProviderBackend",

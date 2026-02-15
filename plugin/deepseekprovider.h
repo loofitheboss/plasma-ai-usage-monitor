@@ -1,26 +1,23 @@
 #ifndef DEEPSEEKPROVIDER_H
 #define DEEPSEEKPROVIDER_H
 
-#include "providerbackend.h"
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
+#include "openaicompatibleprovider.h"
 
 /**
  * DeepSeek provider backend.
  *
- * Uses OpenAI-compatible API at api.deepseek.com/v1.
+ * Uses OpenAI-compatible API at api.deepseek.com.
  * - Rate limit info from response headers (x-ratelimit-*)
  * - Usage data from chat completion response body
- * - Balance/cost from GET /user/balance endpoint
+ * - Balance from GET /user/balance endpoint
  *
  * Models: deepseek-chat, deepseek-reasoner
  */
-class DeepSeekProvider : public ProviderBackend
+class DeepSeekProvider : public OpenAICompatibleProvider
 {
     Q_OBJECT
 
-    Q_PROPERTY(QString model READ model WRITE setModel NOTIFY modelChanged)
+    Q_PROPERTY(double balance READ balance NOTIFY balanceChanged)
 
 public:
     explicit DeepSeekProvider(QObject *parent = nullptr);
@@ -28,25 +25,23 @@ public:
     QString name() const override { return QStringLiteral("DeepSeek"); }
     QString iconName() const override { return QStringLiteral("globe"); }
 
-    QString model() const;
-    void setModel(const QString &model);
+    double balance() const;
 
     Q_INVOKABLE void refresh() override;
 
 Q_SIGNALS:
-    void modelChanged();
+    void balanceChanged();
+
+protected:
+    const char *defaultBaseUrl() const override { return BASE_URL; }
 
 private Q_SLOTS:
-    void onCompletionReply(QNetworkReply *reply);
     void onBalanceReply(QNetworkReply *reply);
 
 private:
-    void fetchRateLimits();
     void fetchBalance();
-    void checkAllDone();
 
-    QString m_model = QStringLiteral("deepseek-chat");
-    int m_pendingRequests = 0;
+    double m_balance = 0.0;
 
     static constexpr const char *BASE_URL = "https://api.deepseek.com";
 };

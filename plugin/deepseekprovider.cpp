@@ -3,18 +3,17 @@
 #include <QDebug>
 
 DeepSeekProvider::DeepSeekProvider(QObject *parent)
-    : ProviderBackend(parent)
+    : OpenAICompatibleProvider(parent)
 {
+    // Set default model
+    setModel(QStringLiteral("deepseek-chat"));
+
+    // Register model pricing ($ per 1M tokens) — DeepSeek pricing as of 2025
+    registerModelPricing(QStringLiteral("deepseek-chat"), 0.14, 0.28);
+    registerModelPricing(QStringLiteral("deepseek-reasoner"), 0.55, 2.19);
 }
 
-QString DeepSeekProvider::model() const { return m_model; }
-void DeepSeekProvider::setModel(const QString &model)
-{
-    if (m_model != model) {
-        m_model = model;
-        Q_EMIT modelChanged();
-    }
-}
+double DeepSeekProvider::balance() const { return m_balance; }
 
 void DeepSeekProvider::refresh()
 {
@@ -24,116 +23,39 @@ void DeepSeekProvider::refresh()
         return;
     }
 
-    setLoading(true);
-    clearError();
-    m_pendingRequests = 0;
+    // Call parent's refresh which sets loading, clears error,
+    // resets pending count, and kicks off chat completion request
+    OpenAICompatibleProvider::refresh();
 
-    fetchRateLimits();
+    // Additionally fetch the balance (adds to pending count)
     fetchBalance();
-}
-
-void DeepSeekProvider::fetchRateLimits()
-{
-    // Use minimal chat completion to read rate limit headers
-    QUrl url(QStringLiteral("%1/chat/completions").arg(effectiveBaseUrl(BASE_URL)));
-
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
-
-    QJsonObject payload;
-    payload.insert(QStringLiteral("model"), m_model);
-    payload.insert(QStringLiteral("max_tokens"), 1);
-
-    QJsonArray messages;
-    QJsonObject msg;
-    msg.insert(QStringLiteral("role"), QStringLiteral("user"));
-    msg.insert(QStringLiteral("content"), QStringLiteral("hi"));
-    messages.append(msg);
-    payload.insert(QStringLiteral("messages"), messages);
-
-    QByteArray body = QJsonDocument(payload).toJson(QJsonDocument::Compact);
-
-    m_pendingRequests++;
-    QNetworkReply *reply = networkManager()->post(request, body);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        onCompletionReply(reply);
-    });
 }
 
 void DeepSeekProvider::fetchBalance()
 {
     // DeepSeek has a balance endpoint
-    QUrl url(QStringLiteral("%1/user/balance").arg(effectiveBaseUrl(BASE_URL)));
+    QUrl url(QStringLiteral("%1/user/balance").arg(effectiveBaseUrl(defaultBaseUrl())));
 
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
     request.setRawHeader("Content-Type", "application/json");
 
-    m_pendingRequests++;
+    addPendingRequest();
     QNetworkReply *reply = networkManager()->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         onBalanceReply(reply);
     });
 }
 
-void DeepSeekProvider::onCompletionReply(QNetworkReply *reply)
-{
-    reply->deleteLater();
-    m_pendingRequests--;
-
-    if (reply->error() != QNetworkReply::NoError) {
-        int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (httpStatus == 401) {
-            setError(QStringLiteral("Invalid API key"));
-        } else if (httpStatus == 429) {
-            setError(QStringLiteral("Rate limited"));
-        } else {
-            setError(QStringLiteral("API error: %1 (HTTP %2)")
-                         .arg(reply->errorString())
-                         .arg(httpStatus));
-        }
-        checkAllDone();
-        return;
-    }
-
-    // Parse rate limit headers (OpenAI-compatible format)
-    auto readHeader = [&](const char *name) -> int {
-        QByteArray val = reply->rawHeader(name);
-        return val.isEmpty() ? 0 : val.toInt();
-    };
-
-    int rlRequests = readHeader("x-ratelimit-limit-requests");
-    int rlTokens = readHeader("x-ratelimit-limit-tokens");
-    int rlReqRemaining = readHeader("x-ratelimit-remaining-requests");
-    int rlTokRemaining = readHeader("x-ratelimit-remaining-tokens");
-    QString rlReset = QString::fromUtf8(reply->rawHeader("x-ratelimit-reset-requests"));
-
-    if (rlRequests > 0) {
-        setRateLimitRequests(rlRequests);
-        setRateLimitRequestsRemaining(rlReqRemaining);
-    }
-    if (rlTokens > 0) {
-        setRateLimitTokens(rlTokens);
-        setRateLimitTokensRemaining(rlTokRemaining);
-    }
-    if (!rlReset.isEmpty()) {
-        setRateLimitResetTime(rlReset);
-    }
-
-    setConnected(true);
-    checkAllDone();
-}
-
 void DeepSeekProvider::onBalanceReply(QNetworkReply *reply)
 {
     reply->deleteLater();
-    m_pendingRequests--;
+    decrementPendingRequest();
 
     if (reply->error() != QNetworkReply::NoError) {
         // Non-fatal: rate limit data may still be available
         qWarning() << "AI Usage Monitor: DeepSeek balance API error:" << reply->errorString();
-        checkAllDone();
+        onAllRequestsDone();
         return;
     }
 
@@ -148,25 +70,10 @@ void DeepSeekProvider::onBalanceReply(QNetworkReply *reply)
             QJsonObject b = bal.toObject();
             totalBalance += b.value(QStringLiteral("total_balance")).toString().toDouble();
         }
-        // We can display remaining balance as a cost indicator (inverted)
-        setCost(totalBalance);
+        // Store remaining balance separately — this is NOT spending
+        m_balance = totalBalance;
+        Q_EMIT balanceChanged();
     }
 
-    checkAllDone();
-}
-
-void DeepSeekProvider::checkAllDone()
-{
-    if (m_pendingRequests <= 0) {
-        setLoading(false);
-        updateLastRefreshed();
-        Q_EMIT dataUpdated();
-
-        if (rateLimitRequests() > 0) {
-            int usedPercent = 100 - (rateLimitRequestsRemaining() * 100 / rateLimitRequests());
-            if (usedPercent >= 80) {
-                Q_EMIT quotaWarning(name(), usedPercent);
-            }
-        }
-    }
+    onAllRequestsDone();
 }

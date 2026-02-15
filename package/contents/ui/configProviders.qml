@@ -202,6 +202,15 @@ KCM.SimpleKCM {
             Layout.fillWidth: true
         }
 
+        QQC2.Label {
+            visible: openaiBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
         // ══════════════════════════════════════════════
         // ── Anthropic ──
         // ══════════════════════════════════════════════
@@ -279,6 +288,15 @@ KCM.SimpleKCM {
             enabled: anthropicSwitch.checked
             text: plasmoid.configuration.anthropicCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+        }
+
+        QQC2.Label {
+            visible: anthropicBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
@@ -363,6 +381,15 @@ KCM.SimpleKCM {
             Layout.fillWidth: true
         }
 
+        QQC2.Label {
+            visible: googleBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
         // ══════════════════════════════════════════════
         // ── Mistral AI ──
         // ══════════════════════════════════════════════
@@ -444,6 +471,15 @@ KCM.SimpleKCM {
             Layout.fillWidth: true
         }
 
+        QQC2.Label {
+            visible: mistralBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
         // ══════════════════════════════════════════════
         // ── DeepSeek ──
         // ══════════════════════════════════════════════
@@ -519,6 +555,15 @@ KCM.SimpleKCM {
             enabled: deepseekSwitch.checked
             text: plasmoid.configuration.deepseekCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+        }
+
+        QQC2.Label {
+            visible: deepseekBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
@@ -601,6 +646,15 @@ KCM.SimpleKCM {
             Layout.fillWidth: true
         }
 
+        QQC2.Label {
+            visible: groqBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
         // ══════════════════════════════════════════════
         // ── xAI / Grok ──
         // ══════════════════════════════════════════════
@@ -677,6 +731,15 @@ KCM.SimpleKCM {
             enabled: xaiSwitch.checked
             text: plasmoid.configuration.xaiCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+        }
+
+        QQC2.Label {
+            visible: xaiBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
     }

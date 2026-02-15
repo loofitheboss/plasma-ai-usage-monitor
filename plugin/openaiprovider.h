@@ -44,10 +44,12 @@ Q_SIGNALS:
 private Q_SLOTS:
     void onUsageReply(QNetworkReply *reply);
     void onCostsReply(QNetworkReply *reply);
+    void onMonthlyCostsReply(QNetworkReply *reply);
 
 private:
     void fetchUsage();
     void fetchCosts();
+    void fetchMonthlyCosts();
     void checkAllDone();
 
     QString m_projectId;

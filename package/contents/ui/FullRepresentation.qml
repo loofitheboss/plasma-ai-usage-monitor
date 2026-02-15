@@ -5,6 +5,7 @@ import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.kirigami as Kirigami
+import com.github.loofi.aiusagemonitor 1.0
 
 PlasmaExtras.Representation {
     id: fullRoot
@@ -169,8 +170,8 @@ PlasmaExtras.Representation {
                             providerIcon: "globe"
                             providerColor: "#D4A574"
                             backend: root.anthropic ?? null
-                            showCost: false
-                            showUsage: false
+                            showCost: true
+                            showUsage: true
                         }
 
                         ProviderCard {
@@ -180,8 +181,8 @@ PlasmaExtras.Representation {
                             providerIcon: "globe"
                             providerColor: "#4285F4"
                             backend: root.google ?? null
-                            showCost: false
-                            showUsage: false
+                            showCost: true
+                            showUsage: true
                         }
 
                         ProviderCard {
@@ -410,14 +411,8 @@ PlasmaExtras.Representation {
         }
     }
 
-    // Clipboard helper
-    QQC2.TextArea {
+    // Clipboard helper (C++ implementation)
+    ClipboardHelper {
         id: clipboard
-        visible: false
-        function setText(t) {
-            text = t;
-            selectAll();
-            copy();
-        }
     }
 }

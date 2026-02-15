@@ -66,12 +66,14 @@ qint64 ProviderBackend::outputTokens() const { return m_outputTokens; }
 qint64 ProviderBackend::totalTokens() const { return m_inputTokens + m_outputTokens; }
 int ProviderBackend::requestCount() const { return m_requestCount; }
 double ProviderBackend::cost() const { return m_cost; }
+bool ProviderBackend::isEstimatedCost() const { return m_isEstimatedCost; }
 
 void ProviderBackend::setInputTokens(qint64 tokens) { m_inputTokens = tokens; }
 void ProviderBackend::setOutputTokens(qint64 tokens) { m_outputTokens = tokens; }
 void ProviderBackend::setRequestCount(int count) { m_requestCount = count; }
 void ProviderBackend::setCost(double cost) {
     m_cost = cost;
+    m_isEstimatedCost = false;
     checkBudgetLimits();
 }
 
@@ -193,4 +195,38 @@ QString ProviderBackend::apiKey() const
 QNetworkAccessManager *ProviderBackend::networkManager() const
 {
     return m_networkManager;
+}
+
+// --- Token-based Cost Estimation ---
+
+void ProviderBackend::registerModelPricing(const QString &modelName, double inputPricePerMToken, double outputPricePerMToken)
+{
+    m_modelPricing.insert(modelName, ModelPricing{inputPricePerMToken, outputPricePerMToken});
+}
+
+void ProviderBackend::updateEstimatedCost(const QString &currentModel)
+{
+    // Only estimate if no real cost has been set by a billing API
+    if (!m_isEstimatedCost && m_cost > 0) return;
+
+    auto it = m_modelPricing.constFind(currentModel);
+    if (it == m_modelPricing.constEnd()) {
+        // Try prefix matching (e.g., "mistral-large-latest" could match "mistral-large")
+        for (auto pit = m_modelPricing.constBegin(); pit != m_modelPricing.constEnd(); ++pit) {
+            if (currentModel.startsWith(pit.key())) {
+                it = pit;
+                break;
+            }
+        }
+    }
+    if (it == m_modelPricing.constEnd()) return;
+
+    double inputCost = (static_cast<double>(m_inputTokens) / 1000000.0) * it->inputPricePerMToken;
+    double outputCost = (static_cast<double>(m_outputTokens) / 1000000.0) * it->outputPricePerMToken;
+    double estimatedTotal = inputCost + outputCost;
+
+    m_cost = estimatedTotal;
+    m_isEstimatedCost = true;
+    m_dailyCost = estimatedTotal; // Best estimate for daily cost from accumulated tokens
+    checkBudgetLimits();
 }
