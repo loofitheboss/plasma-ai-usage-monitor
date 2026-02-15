@@ -58,29 +58,31 @@ plasmawindowed com.github.loofi.aiusagemonitor
 | Class | File | Purpose |
 |-------|------|---------|
 | `SecretsManager` | `plugin/secretsmanager.{h,cpp}` | KWallet wrapper for API key storage |
-| `ProviderBackend` | `plugin/providerbackend.{h,cpp}` | Abstract base for all providers (token usage, rate limits, cost, budget, errors, proxy support) |
-| `OpenAIProvider` | `plugin/openaiprovider.{h,cpp}` | OpenAI usage/costs/rate-limit integration |
-| `AnthropicProvider` | `plugin/anthropicprovider.{h,cpp}` | Anthropic rate-limit header parsing |
+| `ProviderBackend` | `plugin/providerbackend.{h,cpp}` | Abstract base for all providers (token usage, rate limits, cost, budget, errors, proxy support, per-model cost estimation) |
+| `OpenAICompatibleProvider` | `plugin/openaicompatibleprovider.{h,cpp}` | Intermediate base for OpenAI-compatible APIs (chat completions, rate limit headers, token usage parsing) |
+| `OpenAIProvider` | `plugin/openaiprovider.{h,cpp}` | OpenAI usage/costs/rate-limit integration (Admin API key required) |
+| `AnthropicProvider` | `plugin/anthropicprovider.{h,cpp}` | Anthropic rate-limit header parsing via `count_tokens` |
 | `GoogleProvider` | `plugin/googleprovider.{h,cpp}` | Google Gemini connectivity + static limits |
-| `MistralProvider` | `plugin/mistralprovider.{h,cpp}` | Mistral AI chat/rate-limit integration |
-| `DeepSeekProvider` | `plugin/deepseekprovider.{h,cpp}` | DeepSeek chat/rate-limit integration |
-| `GroqProvider` | `plugin/groqprovider.{h,cpp}` | Groq chat/rate-limit integration |
-| `XAIProvider` | `plugin/xaiprovider.{h,cpp}` | xAI/Grok chat/rate-limit integration |
+| `MistralProvider` | `plugin/mistralprovider.{h,cpp}` | Mistral AI (extends `OpenAICompatibleProvider`) |
+| `DeepSeekProvider` | `plugin/deepseekprovider.{h,cpp}` | DeepSeek (extends `OpenAICompatibleProvider`, adds balance endpoint) |
+| `GroqProvider` | `plugin/groqprovider.{h,cpp}` | Groq (extends `OpenAICompatibleProvider`) |
+| `XAIProvider` | `plugin/xaiprovider.{h,cpp}` | xAI/Grok (extends `OpenAICompatibleProvider`) |
+| `ClipboardHelper` | `plugin/clipboardhelper.h` | Clipboard copy/paste helper for data export |
 | `UsageDatabase` | `plugin/usagedatabase.{h,cpp}` | SQLite persistence for usage history, CSV/JSON export |
 
 ### QML Components
 
 | Component | Purpose |
 |-----------|---------|
-| `main.qml` | Root PlasmoidItem — instantiates 7 backends, timers, notifications, database |
-| `CompactRepresentation.qml` | Panel icon with 3 display modes (icon/cost/count) |
-| `FullRepresentation.qml` | Popup with status bar, Live/History tabs, export buttons |
-| `ProviderCard.qml` | Provider stats card with budget bars and error details |
-| `CostSummaryCard.qml` | Aggregate cost breakdown across all providers |
+| `main.qml` | Root PlasmoidItem — instantiates 7 backends, per-provider timers, notifications, database, single `allProviders` array |
+| `CompactRepresentation.qml` | Panel icon with 3 display modes (icon/cost/count) and accessibility |
+| `FullRepresentation.qml` | Popup with status bar, Live/History tabs, data-driven provider cards via Repeater, export buttons |
+| `ProviderCard.qml` | Collapsible provider stats card with budget bars, cost estimation labels, error details, and accessibility |
+| `CostSummaryCard.qml` | Aggregate cost breakdown across all providers with accessibility |
 | `UsageChart.qml` | Canvas line/area chart (cost/tokens/requests/rateLimit) |
 | `TrendSummary.qml` | Summary stats grid for a time range |
 | `configGeneral.qml` | General settings + per-provider refresh intervals |
-| `configProviders.qml` | Provider enable/key/model/proxy settings (7 providers) |
+| `configProviders.qml` | Provider enable/key/model/proxy settings with HTTPS security warnings |
 | `configAlerts.qml` | Thresholds, notification types, per-provider toggles, cooldown, DND |
 | `configBudget.qml` | Per-provider daily/monthly budgets |
 | `configHistory.qml` | History enable/retention/prune settings |
@@ -94,8 +96,9 @@ plasmawindowed com.github.loofi.aiusagemonitor
 - Use `Q_EMIT` instead of bare `emit`
 - Use `QStringLiteral()` for string literals
 - All Q_PROPERTYs must have NOTIFY signals
-- New providers should inherit from `ProviderBackend` and implement the pure virtual `refresh()` method
+- New providers should inherit from `OpenAICompatibleProvider` (if OpenAI-compatible) or `ProviderBackend` (if custom API) and implement the required virtual methods
 - Use `effectiveBaseUrl(BASE_URL)` instead of hardcoded base URLs to support custom proxy URLs
+- Use `registerModelPricing()` in the constructor and `updateEstimatedCost(model)` after parsing tokens to enable automatic cost estimation
 - Budget values are managed through the base class — call `setDailyCost()` / `setMonthlyCost()` in your `refresh()` implementation
 
 ### QML
@@ -104,6 +107,9 @@ plasmawindowed com.github.loofi.aiusagemonitor
 - Config pages must use `KCM.SimpleKCM` as root element (from `org.kde.kcmutils`)
 - Use `Kirigami.Units` and `Kirigami.Theme` for sizing and colors — no hardcoded pixel values or colors
 - Child components access root PlasmoidItem properties via the `root` id (dynamic scoping)
+- Provider cards are data-driven via `Repeater` over `root.allProviders` — do not hardcode per-provider cards in `FullRepresentation.qml`
+- New providers only need to be added to the `allProviders` array in `main.qml` (with `name`, `configKey`, `backend`, `enabled`, `color`)
+- Add `Accessible.role` and `Accessible.name` to interactive and informational components for screen reader support
 - Budget config values are stored as integers in cents (e.g., 1050 = $10.50) — convert with `/ 100.0` when passing to C++ backends
 
 ### Config Conventions
@@ -114,17 +120,33 @@ plasmawindowed com.github.loofi.aiusagemonitor
 
 ## Adding a New Provider
 
+### OpenAI-compatible providers (recommended path)
+
+If the new provider uses an OpenAI-compatible chat completions API:
+
+1. Create `plugin/newprovider.h` and `plugin/newprovider.cpp` inheriting from `OpenAICompatibleProvider`
+2. Implement only `name()`, `iconName()`, and `defaultBaseUrl()` — typically ~15 lines per file
+3. In the constructor, set the default model and call `registerModelPricing()` for each supported model
+4. Register the type in `plugin/aiusageplugin.cpp` and add to `plugin/qmldir`
+5. Add source files to `plugin/CMakeLists.txt`
+6. Add config entries in `package/contents/config/main.xml` (enable, model, customBaseUrl, budget, notifications, refresh interval)
+7. Add UI elements in `configProviders.qml`, `configBudget.qml`, `configAlerts.qml`, and `configGeneral.qml`
+8. Add the provider to the `allProviders` array in `main.qml` with `name`, `configKey`, `backend`, `enabled`, and `color`
+9. Instantiate the backend in `main.qml` with budget conversion (`/ 100.0`) and notification handlers
+
+See `MistralProvider` or `GroqProvider` for minimal examples (~15 lines of C++ each).
+
+### Custom API providers
+
+If the provider has a completely different API:
+
 1. Create `plugin/newprovider.h` and `plugin/newprovider.cpp` inheriting from `ProviderBackend`
-2. Implement `refresh()` to call the provider's API and update properties
+2. Implement the pure virtual `refresh()` method to call the provider's API
 3. Use `effectiveBaseUrl(BASE_URL)` for the API URL to support custom proxy URLs
-4. Call `setDailyCost()` / `setMonthlyCost()` if the provider supports cost tracking
-5. Register the type in `plugin/aiusageplugin.cpp`
-6. Add the provider to `plugin/qmldir`
-7. Add source files to `plugin/CMakeLists.txt`
-8. Add config entries in `package/contents/config/main.xml` (enable, model, customBaseUrl, budget, notifications, refresh interval)
-9. Add UI elements in `configProviders.qml`, `configBudget.qml`, `configAlerts.qml`, and `configGeneral.qml`
-10. Instantiate the backend in `main.qml` with budget conversion (`/ 100.0`) and notification handlers
-11. Add a `ProviderCard` in `FullRepresentation.qml`
+4. Call `setInputTokens()`, `setOutputTokens()`, `setRequestCount()` to update usage
+5. Call `setDailyCost()` / `setMonthlyCost()` / `setCost()` if the provider supports billing
+6. Optionally call `registerModelPricing()` + `updateEstimatedCost()` for token-based estimation
+7. Follow steps 4-9 from the OpenAI-compatible path above
 
 ## Contribution Workflow
 

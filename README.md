@@ -6,21 +6,23 @@ A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, an
 
 ## Features
 
-- **Real-time monitoring** — Periodic background polling with configurable refresh interval (default 5 min) and manual refresh per provider
+- **Real-time monitoring** — Periodic background polling with configurable per-provider refresh intervals (default 5 min) and manual refresh
 - **7 AI providers** — OpenAI, Anthropic, Google Gemini, Mistral AI, DeepSeek, Groq, xAI/Grok
 - **Token usage tracking** — Input/output tokens used, requests made, quota/tier limits
-- **Cost tracking** — Dollar spending with daily and monthly cost breakdowns
+- **Cost tracking** — Dollar spending with daily and monthly cost breakdowns; automatic token-based cost estimation for providers without billing APIs (~30 models with pricing tables)
 - **Budget management** — Per-provider daily/monthly budgets with configurable warning thresholds and notifications when budgets are exceeded
 - **Usage history** — SQLite-backed persistence with configurable retention (7-365 days, default 90)
 - **Interactive charts** — Canvas-based line/area charts showing cost, tokens, requests, and rate limit trends over 24h/7d/30d
 - **Trend summaries** — Total cost, average daily cost, peak usage, and snapshot counts per time range
 - **Rate limit visualization** — Progress bars with color-coded thresholds (green/yellow/red)
+- **Collapsible provider cards** — Click to collapse/expand; collapsed cards show a compact cost summary
 - **KDE notifications** — Desktop alerts for rate limit warnings, API errors, budget exceeded, provider disconnect/reconnect
 - **Notification controls** — Per-provider toggles, cooldown period, Do Not Disturb schedule
 - **Secure key storage** — API keys stored in KWallet, never written to config files on disk
 - **Panel display modes** — Compact icon shows green/yellow/red status badge, or current cost, or active provider count
-- **Proxy support** — Custom base URLs per provider for API proxies/gateways
-- **Data export** — CSV and JSON export of usage history
+- **Proxy support** — Custom base URLs per provider for API proxies/gateways, with inline HTTPS security warnings
+- **Data export** — CSV and JSON export of usage history (copies to clipboard)
+- **Accessibility** — Screen reader annotations on provider cards, cost summary, and panel icon
 - **Per-provider configuration** — Enable/disable providers independently, select models, set refresh intervals, configure budgets
 
 ## What Each Provider Reports
@@ -29,19 +31,18 @@ A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, an
 |--------|--------|-----------|--------|---------|----------|------|-----|
 | Token usage (in/out) | Yes | No | No | Yes | Yes | Yes | Yes |
 | Rate limits remaining | Yes | Yes | No* | Yes | Yes | Yes | Yes |
-| Cost / spending | Yes | No | No | Yes | Yes | Yes | Yes |
+| Cost / spending | Yes (billing) | Est.** | Est.** | Est.** | Est.** | Est.** | Est.** |
 | Request count | Yes | Yes | No | Yes | Yes | Yes | Yes |
 | Connection status | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 
 *\* Google Gemini displays known free-tier limits from documentation (static).*
+*\*\* Estimated from token usage and per-model pricing tables. Labeled "Est. Cost" in the UI with a tooltip.*
 
-- **OpenAI** has the richest data: real usage from `/organization/usage/completions`, dollar costs from `/organization/costs`, and rate limits from response headers. Requires an **Admin API key**.
-- **Anthropic** has no usage/billing API. The widget pings `/v1/messages/count_tokens` (lightweight, no token cost) and reads the `anthropic-ratelimit-*` response headers for rate limit data.
-- **Google Gemini** has no usage API and no rate limit headers. The widget verifies connectivity via `countTokens` and displays known free-tier limits from documentation.
-- **Mistral AI** queries `/v1/chat/completions` and reads rate limit headers. Supports cost estimation.
-- **DeepSeek** queries `/chat/completions` and reads rate limit headers. Supports cost tracking.
-- **Groq** queries `/openai/v1/chat/completions` and reads rate limit headers. Supports cost tracking.
-- **xAI / Grok** queries `/v1/chat/completions` and reads rate limit headers. Supports cost tracking.
+- **OpenAI** has the richest data: real usage from `/organization/usage/completions`, dollar costs from `/organization/costs` and `/organization/costs` (monthly), and rate limits from response headers. Requires an **Admin API key**.
+- **Anthropic** has no usage/billing API. The widget pings `/v1/messages/count_tokens` (lightweight, no token cost) and reads the `anthropic-ratelimit-*` response headers for rate limit data. Cost is estimated from registered model pricing.
+- **Google Gemini** has no usage API and no rate limit headers. The widget verifies connectivity via `countTokens` and displays known free-tier limits from documentation. Cost is estimated from registered model pricing.
+- **Mistral AI, Groq, xAI** — These use an OpenAI-compatible API. The widget sends a minimal chat completion request (1 token), reads `x-ratelimit-*` response headers, and accumulates token usage. Cost is estimated from per-model pricing tables.
+- **DeepSeek** — Same as above, plus a separate balance endpoint (`/user/balance`) to fetch the prepaid account balance.
 
 ## Screenshots
 
@@ -133,7 +134,7 @@ Each provider has:
 - **Enable/disable** toggle
 - **API key** field — Keys are stored in KWallet. Use the eye icon to show/hide, and the clear button to remove a key.
 - **Model selector** — Choose which model to query (e.g., `gpt-4o`, `claude-sonnet-4-20250514`, `gemini-2.0-flash`, `mistral-large-latest`, `deepseek-chat`, `llama-3.3-70b-versatile`, `grok-3`)
-- **Custom base URL** — Optional proxy/gateway URL override
+- **Custom base URL** — Optional proxy/gateway URL override. Shows a security warning if you enter an `http://` (non-HTTPS) URL.
 - **Project ID** (OpenAI only) — Optional, to filter usage to a specific project
 
 ### Alerts
@@ -162,7 +163,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system
+├── CMakeLists.txt                  # Root build system (v2.0.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -173,10 +174,10 @@ plasma-ai-usage-monitor/
 │       │   ├── config.qml          # Config tab definitions (5 tabs)
 │       │   └── main.xml            # KConfigXT schema
 │       └── ui/
-│           ├── main.qml            # Root PlasmoidItem (7 providers, timers, notifications)
+│           ├── main.qml            # Root PlasmoidItem (providers, timers, notifications)
 │           ├── CompactRepresentation.qml  # Panel icon (3 display modes)
 │           ├── FullRepresentation.qml     # Popup with Live/History tabs
-│           ├── ProviderCard.qml           # Provider stats card with budget bars
+│           ├── ProviderCard.qml           # Collapsible provider stats card
 │           ├── CostSummaryCard.qml        # Aggregate cost breakdown
 │           ├── UsageChart.qml             # Canvas line/area chart
 │           ├── TrendSummary.qml           # Summary stats grid
@@ -188,40 +189,44 @@ plasma-ai-usage-monitor/
 └── plugin/                         # C++ QML plugin
     ├── CMakeLists.txt
     ├── qmldir                      # QML module registration
-    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (9 types)
+    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (11 types)
     ├── secretsmanager.{h,cpp}      # KWallet wrapper
-    ├── providerbackend.{h,cpp}     # Abstract base class
+    ├── clipboardhelper.h            # Clipboard copy/paste helper
+    ├── providerbackend.{h,cpp}     # Abstract base class + cost estimation
+    ├── openaicompatibleprovider.{h,cpp}  # Intermediate base for OpenAI-compatible APIs
     ├── openaiprovider.{h,cpp}      # OpenAI API integration
     ├── anthropicprovider.{h,cpp}   # Anthropic API integration
     ├── googleprovider.{h,cpp}      # Google Gemini integration
-    ├── mistralprovider.{h,cpp}     # Mistral AI integration
-    ├── deepseekprovider.{h,cpp}    # DeepSeek integration
-    ├── groqprovider.{h,cpp}        # Groq integration
-    ├── xaiprovider.{h,cpp}         # xAI/Grok integration
+    ├── mistralprovider.{h,cpp}     # Mistral AI (extends OpenAICompatibleProvider)
+    ├── deepseekprovider.{h,cpp}    # DeepSeek (extends OpenAICompatibleProvider)
+    ├── groqprovider.{h,cpp}        # Groq (extends OpenAICompatibleProvider)
+    ├── xaiprovider.{h,cpp}         # xAI/Grok (extends OpenAICompatibleProvider)
     └── usagedatabase.{h,cpp}       # SQLite usage history persistence
 ```
 
 ### C++ Plugin
 
-The QML plugin (`com.github.loofi.aiusagemonitor`) provides:
+The QML plugin (`com.github.loofi.aiusagemonitor`) provides 11 types:
 
 - **`SecretsManager`** — Wraps KWallet for secure API key storage. Uses wallet folder `"ai-usage-monitor"` with async open and a pending operations queue.
-- **`ProviderBackend`** (abstract) — Base class with properties for token usage, rate limits, cost tracking, budget management, error tracking, and custom base URL support. Includes signals for quota warnings, budget exceeded, provider disconnect/reconnect.
-- **`OpenAIProvider`** — Queries `GET /organization/usage/completions` and `GET /organization/costs`. Reads `x-ratelimit-*` response headers.
-- **`AnthropicProvider`** — Pings `POST /v1/messages/count_tokens`. Reads `anthropic-ratelimit-*` headers.
-- **`GoogleProvider`** — Pings `POST /v1beta/models/{model}:countTokens`. Applies static known free-tier limits.
-- **`MistralProvider`** — Queries `/v1/chat/completions`. Reads rate limit headers and tracks cost.
-- **`DeepSeekProvider`** — Queries `/chat/completions`. Reads rate limit headers and tracks cost.
-- **`GroqProvider`** — Queries `/openai/v1/chat/completions`. Reads rate limit headers and tracks cost.
-- **`XAIProvider`** — Queries `/v1/chat/completions`. Reads rate limit headers and tracks cost.
+- **`ProviderBackend`** (abstract) — Base class with properties for token usage, rate limits, cost tracking (real and estimated), budget management, error tracking, and custom base URL support. Includes per-model pricing tables and `updateEstimatedCost()` for token-based cost estimation. Signals for quota warnings, budget exceeded, provider disconnect/reconnect.
+- **`OpenAICompatibleProvider`** (abstract) — Intermediate base class for providers using OpenAI-compatible chat completions APIs. Handles sending a minimal completion request, parsing `x-ratelimit-*` headers, extracting token usage from response body, and calling `updateEstimatedCost()`. Subclasses only need to provide `name()`, `iconName()`, `defaultBaseUrl()`, and optionally override hooks.
+- **`OpenAIProvider`** — Queries `GET /organization/usage/completions`, `GET /organization/costs`, and monthly costs. Reads `x-ratelimit-*` response headers. Requires an Admin API key.
+- **`AnthropicProvider`** — Pings `POST /v1/messages/count_tokens`. Reads `anthropic-ratelimit-*` headers. Registers pricing for Claude models.
+- **`GoogleProvider`** — Pings `POST /v1beta/models/{model}:countTokens`. Applies static known free-tier limits. Registers pricing for Gemini models.
+- **`MistralProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 6 Mistral models.
+- **`DeepSeekProvider`** — Extends `OpenAICompatibleProvider`. Also fetches prepaid balance from `/user/balance`. Registers pricing for deepseek-chat and deepseek-reasoner.
+- **`GroqProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 5 Groq models.
+- **`XAIProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for grok-3, grok-3-mini, grok-2.
+- **`ClipboardHelper`** — Simple helper class for copying text to the system clipboard (replaces the previous TextArea workaround).
 - **`UsageDatabase`** — SQLite persistence with WAL mode, configurable retention, auto-pruning, and CSV/JSON export.
 
 ### QML Frontend
 
-- **`main.qml`** — Instantiates 7 C++ backends, manages refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase
-- **`CompactRepresentation.qml`** — Panel icon with 3 display modes (icon with status badge, cost display, provider count) and smooth animations
-- **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, provider cards, cost summary, chart, trend summary, and export buttons
-- **`ProviderCard.qml`** — Card showing connection status, token usage, cost, rate limit bars, budget progress bars, error badges with expandable details, relative time display, and animations
+- **`main.qml`** — Instantiates 7 C++ backends, manages per-provider refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase. Uses a single `allProviders` array (with `configKey`) to drive tooltips, refresh, and API key loading — zero duplicated provider lists.
+- **`CompactRepresentation.qml`** — Panel icon with 3 display modes (icon with status badge, cost display, provider count), smooth animations, and screen reader accessibility
+- **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, data-driven provider cards via Repeater, cost summary, chart, trend summary, and export buttons
+- **`ProviderCard.qml`** — Collapsible card showing connection status, token usage, cost (real or estimated), rate limit bars, budget progress bars, error badges with expandable details, relative time display, and accessibility annotations
 
 ## API Key Requirements
 
