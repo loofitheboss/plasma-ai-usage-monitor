@@ -5,6 +5,11 @@ set(aiusagemonitor_SRCS
     openaiprovider.cpp
     anthropicprovider.cpp
     googleprovider.cpp
+    mistralprovider.cpp
+    deepseekprovider.cpp
+    groqprovider.cpp
+    xaiprovider.cpp
+    usagedatabase.cpp
 )
 
 set(aiusagemonitor_HDRS
@@ -14,6 +19,11 @@ set(aiusagemonitor_HDRS
     openaiprovider.h
     anthropicprovider.h
     googleprovider.h
+    mistralprovider.h
+    deepseekprovider.h
+    groqprovider.h
+    xaiprovider.h
+    usagedatabase.h
 )
 
 add_library(aiusagemonitorplugin SHARED ${aiusagemonitor_SRCS} ${aiusagemonitor_HDRS})
@@ -23,6 +33,7 @@ target_link_libraries(aiusagemonitorplugin
     Qt6::Qml
     Qt6::Quick
     Qt6::Network
+    Qt6::Sql
     KF6::Wallet
     KF6::Notifications
     KF6::I18n

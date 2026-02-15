@@ -1,0 +1,184 @@
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
+
+/**
+ * Summary statistics for historical usage data.
+ *
+ * summaryData: QVariantMap with keys: totalCost, avgDailyCost, maxDailyCost,
+ *              totalRequests, peakTokenUsage, snapshotCount
+ * dailyCosts:  QVariantList of QVariantMap with keys: date, totalCost, maxDailyCost
+ */
+Item {
+    id: trendRoot
+
+    property var summaryData: ({})
+    property var dailyCosts: []
+    property string provider: ""
+
+    implicitHeight: summaryGrid.implicitHeight
+
+    // Empty state
+    PlasmaComponents.Label {
+        anchors.centerIn: parent
+        visible: !summaryData || Object.keys(summaryData).length === 0
+                 || (summaryData.snapshotCount || 0) === 0
+        text: i18n("No historical data available")
+        opacity: 0.5
+        font.pointSize: Kirigami.Theme.smallFont.pointSize
+    }
+
+    GridLayout {
+        id: summaryGrid
+        anchors.fill: parent
+        visible: summaryData && (summaryData.snapshotCount || 0) > 0
+        columns: 2
+        columnSpacing: Kirigami.Units.largeSpacing
+        rowSpacing: Kirigami.Units.smallSpacing
+
+        // ── Total Cost ──
+        PlasmaComponents.Label {
+            text: i18n("Total Cost:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+        }
+        PlasmaComponents.Label {
+            text: "$" + (summaryData.totalCost || 0).toFixed(4)
+            font.bold: true
+        }
+
+        // ── Average Daily Cost ──
+        PlasmaComponents.Label {
+            text: i18n("Avg Daily Cost:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+        }
+        PlasmaComponents.Label {
+            text: "$" + (summaryData.avgDailyCost || 0).toFixed(4)
+        }
+
+        // ── Max Daily Cost ──
+        PlasmaComponents.Label {
+            text: i18n("Peak Daily Cost:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+        }
+        PlasmaComponents.Label {
+            text: "$" + (summaryData.maxDailyCost || 0).toFixed(4)
+            color: (summaryData.maxDailyCost || 0) > (summaryData.avgDailyCost || 0) * 2
+                   ? Kirigami.Theme.negativeTextColor
+                   : Kirigami.Theme.textColor
+        }
+
+        // ── Total Requests ──
+        PlasmaComponents.Label {
+            text: i18n("Total Requests:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+        }
+        PlasmaComponents.Label {
+            text: formatNumber(summaryData.totalRequests || 0)
+        }
+
+        // ── Peak Token Usage ──
+        PlasmaComponents.Label {
+            text: i18n("Peak Tokens:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+        }
+        PlasmaComponents.Label {
+            text: formatNumber(summaryData.peakTokenUsage || 0)
+        }
+
+        // ── Data Points ──
+        PlasmaComponents.Label {
+            text: i18n("Data Points:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+        }
+        PlasmaComponents.Label {
+            text: (summaryData.snapshotCount || 0).toString()
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+        }
+
+        // ── Trend indicator ──
+        PlasmaComponents.Label {
+            text: i18n("Trend:")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.7
+            Layout.alignment: Qt.AlignRight
+            visible: dailyCosts && dailyCosts.length >= 3
+        }
+        RowLayout {
+            visible: dailyCosts && dailyCosts.length >= 3
+            spacing: Kirigami.Units.smallSpacing
+
+            // Arrow indicating direction
+            Kirigami.Icon {
+                source: trendDirection() > 0 ? "arrow-up" : (trendDirection() < 0 ? "arrow-down" : "arrow-right")
+                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                color: trendDirection() > 0 ? Kirigami.Theme.negativeTextColor
+                     : (trendDirection() < 0 ? Kirigami.Theme.positiveTextColor
+                     : Kirigami.Theme.textColor)
+            }
+
+            PlasmaComponents.Label {
+                text: {
+                    var dir = trendDirection();
+                    if (dir > 0) return i18n("Costs increasing");
+                    if (dir < 0) return i18n("Costs decreasing");
+                    return i18n("Costs stable");
+                }
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                color: trendDirection() > 0 ? Kirigami.Theme.negativeTextColor
+                     : (trendDirection() < 0 ? Kirigami.Theme.positiveTextColor
+                     : Kirigami.Theme.textColor)
+            }
+        }
+    }
+
+    // ── Helper functions ──
+
+    function formatNumber(val) {
+        if (val >= 1000000) return (val / 1000000).toFixed(1) + "M";
+        if (val >= 1000) return (val / 1000).toFixed(1) + "K";
+        return Math.round(val).toString();
+    }
+
+    /**
+     * Simple trend detection: compare average of first half vs second half of daily costs.
+     * Returns: 1 (increasing), -1 (decreasing), 0 (stable)
+     */
+    function trendDirection() {
+        if (!dailyCosts || dailyCosts.length < 3) return 0;
+
+        var mid = Math.floor(dailyCosts.length / 2);
+        var firstHalfSum = 0;
+        var secondHalfSum = 0;
+
+        for (var i = 0; i < mid; i++) {
+            firstHalfSum += (dailyCosts[i].totalCost || 0);
+        }
+        for (var j = mid; j < dailyCosts.length; j++) {
+            secondHalfSum += (dailyCosts[j].totalCost || 0);
+        }
+
+        var firstAvg = firstHalfSum / mid;
+        var secondAvg = secondHalfSum / (dailyCosts.length - mid);
+
+        // 10% threshold for significance
+        var threshold = Math.max(firstAvg, 0.001) * 0.1;
+        if (secondAvg > firstAvg + threshold) return 1;
+        if (secondAvg < firstAvg - threshold) return -1;
+        return 0;
+    }
+}

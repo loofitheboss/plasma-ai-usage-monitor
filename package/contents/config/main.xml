@@ -8,15 +8,39 @@
     <group name="General">
         <entry name="refreshInterval" type="Int">
             <default>300</default>
-            <label>Refresh interval in seconds</label>
+            <label>Default refresh interval in seconds</label>
         </entry>
         <entry name="compactDisplayMode" type="String">
             <default>icon</default>
-            <label>What to show in compact mode: icon, cost, tokens</label>
+            <label>What to show in compact mode: icon, cost, count</label>
+        </entry>
+
+        <!-- Per-provider refresh intervals (0 = use global default) -->
+        <entry name="openaiRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="anthropicRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="googleRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="mistralRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="deepseekRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="groqRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="xaiRefreshInterval" type="Int">
+            <default>0</default>
         </entry>
     </group>
 
     <group name="Providers">
+        <!-- OpenAI -->
         <entry name="openaiEnabled" type="Bool">
             <default>false</default>
         </entry>
@@ -26,19 +50,74 @@
         <entry name="openaiProjectId" type="String">
             <default></default>
         </entry>
+        <entry name="openaiCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
 
+        <!-- Anthropic -->
         <entry name="anthropicEnabled" type="Bool">
             <default>false</default>
         </entry>
         <entry name="anthropicModel" type="String">
             <default>claude-sonnet-4-20250514</default>
         </entry>
+        <entry name="anthropicCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
 
+        <!-- Google -->
         <entry name="googleEnabled" type="Bool">
             <default>false</default>
         </entry>
         <entry name="googleModel" type="String">
             <default>gemini-2.0-flash</default>
+        </entry>
+        <entry name="googleCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
+
+        <!-- Mistral AI -->
+        <entry name="mistralEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="mistralModel" type="String">
+            <default>mistral-large-latest</default>
+        </entry>
+        <entry name="mistralCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
+
+        <!-- DeepSeek -->
+        <entry name="deepseekEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="deepseekModel" type="String">
+            <default>deepseek-chat</default>
+        </entry>
+        <entry name="deepseekCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
+
+        <!-- Groq -->
+        <entry name="groqEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="groqModel" type="String">
+            <default>llama-3.3-70b-versatile</default>
+        </entry>
+        <entry name="groqCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
+
+        <!-- xAI / Grok -->
+        <entry name="xaiEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="xaiModel" type="String">
+            <default>grok-3</default>
+        </entry>
+        <entry name="xaiCustomBaseUrl" type="String">
+            <default></default>
         </entry>
     </group>
 
@@ -56,6 +135,111 @@
         </entry>
         <entry name="notifyOnError" type="Bool">
             <default>true</default>
+        </entry>
+        <entry name="notifyOnBudgetWarning" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="notifyOnDisconnect" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="notifyOnReconnect" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="notificationCooldownMinutes" type="Int">
+            <default>15</default>
+            <label>Minimum minutes between repeated notifications</label>
+        </entry>
+        <entry name="dndStartHour" type="Int">
+            <default>-1</default>
+            <label>Do-not-disturb start hour (-1 = disabled)</label>
+        </entry>
+        <entry name="dndEndHour" type="Int">
+            <default>-1</default>
+            <label>Do-not-disturb end hour (-1 = disabled)</label>
+        </entry>
+
+        <!-- Per-provider notification toggles -->
+        <entry name="openaiNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="anthropicNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="googleNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="mistralNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="deepseekNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="groqNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="xaiNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+    </group>
+
+    <group name="Budget">
+        <!-- Budget values are stored in cents (integer) to avoid floating-point issues.
+             e.g. 1050 = $10.50. The SpinBox in configBudget.qml works in cents natively. -->
+        <entry name="openaiDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="openaiMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="anthropicDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="anthropicMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="googleDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="googleMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="mistralDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="mistralMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="deepseekDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="deepseekMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="groqDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="groqMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="xaiDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="xaiMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="budgetWarningPercent" type="Int">
+            <default>80</default>
+            <label>Percentage of budget to trigger a warning</label>
+        </entry>
+    </group>
+
+    <group name="History">
+        <entry name="historyEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="historyRetentionDays" type="Int">
+            <default>90</default>
+            <label>Number of days to keep usage history</label>
         </entry>
     </group>
 </kcfg>

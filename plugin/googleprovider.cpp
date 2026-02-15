@@ -34,7 +34,7 @@ void GoogleProvider::fetchStatus()
 {
     // Use countTokens as a lightweight connectivity check
     QUrl url(QStringLiteral("%1/models/%2:countTokens")
-                 .arg(QLatin1String(BASE_URL), m_model));
+                 .arg(effectiveBaseUrl(BASE_URL), m_model));
 
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("key"), apiKey());

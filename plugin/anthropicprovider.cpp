@@ -33,7 +33,7 @@ void AnthropicProvider::fetchRateLimits()
 {
     // Use the count_tokens endpoint as a lightweight way to get rate limit headers.
     // This is a minimal request that counts tokens for a tiny message.
-    QUrl url(QStringLiteral("%1/messages/count_tokens").arg(QLatin1String(BASE_URL)));
+    QUrl url(QStringLiteral("%1/messages/count_tokens").arg(effectiveBaseUrl(BASE_URL)));
 
     QNetworkRequest request(url);
     request.setRawHeader("x-api-key", apiKey().toUtf8());

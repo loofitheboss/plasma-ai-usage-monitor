@@ -8,49 +8,55 @@ import org.kde.kirigami as Kirigami
 MouseArea {
     id: compactRoot
 
-    // Access the PlasmoidItem (id: root in main.qml) through QML dynamic scoping.
-    // The backends are exposed as root.openai, root.anthropic, root.google.
+    readonly property var providers: root.allProviders ?? []
+
     readonly property bool hasWarning: {
-        var providers = [root.openai, root.anthropic, root.google];
         for (var i = 0; i < providers.length; i++) {
             var p = providers[i];
-            if (p && p.connected && p.rateLimitRequests > 0) {
-                var usedPercent = ((p.rateLimitRequests - p.rateLimitRequestsRemaining) / p.rateLimitRequests) * 100;
+            if (p && p.enabled && p.backend && p.backend.connected && p.backend.rateLimitRequests > 0) {
+                var usedPercent = ((p.backend.rateLimitRequests - p.backend.rateLimitRequestsRemaining) / p.backend.rateLimitRequests) * 100;
                 if (usedPercent >= plasmoid.configuration.warningThreshold) return true;
             }
         }
         return false;
     }
     readonly property bool hasCritical: {
-        var providers = [root.openai, root.anthropic, root.google];
         for (var i = 0; i < providers.length; i++) {
             var p = providers[i];
-            if (p && p.connected && p.rateLimitRequests > 0) {
-                var usedPercent = ((p.rateLimitRequests - p.rateLimitRequestsRemaining) / p.rateLimitRequests) * 100;
+            if (p && p.enabled && p.backend && p.backend.connected && p.backend.rateLimitRequests > 0) {
+                var usedPercent = ((p.backend.rateLimitRequests - p.backend.rateLimitRequestsRemaining) / p.backend.rateLimitRequests) * 100;
                 if (usedPercent >= plasmoid.configuration.criticalThreshold) return true;
             }
         }
         return false;
     }
     readonly property bool anyConnected: {
-        return (root.openai?.connected ?? false)
-            || (root.anthropic?.connected ?? false)
-            || (root.google?.connected ?? false);
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i] && providers[i].enabled && providers[i].backend && providers[i].backend.connected)
+                return true;
+        }
+        return false;
     }
     readonly property bool anyLoading: {
-        return (root.openai?.loading ?? false)
-            || (root.anthropic?.loading ?? false)
-            || (root.google?.loading ?? false);
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i] && providers[i].enabled && providers[i].backend && providers[i].backend.loading)
+                return true;
+        }
+        return false;
     }
+
+    readonly property string displayMode: plasmoid.configuration.compactDisplayMode
 
     hoverEnabled: true
     onClicked: plasmoid.activated()
 
+    // Icon mode (default)
     Kirigami.Icon {
         id: mainIcon
         anchors.fill: parent
         source: "cpu"
         active: compactRoot.containsMouse
+        visible: compactRoot.displayMode === "icon"
 
         // Overlay badge for status indication
         Rectangle {
@@ -68,10 +74,53 @@ MouseArea {
             }
             border.width: 1
             border.color: Kirigami.Theme.backgroundColor
+
+            Behavior on color {
+                ColorAnimation { duration: 300 }
+            }
         }
     }
 
-    // Spinning indicator when loading
+    // Cost mode
+    PlasmaComponents.Label {
+        id: costLabel
+        anchors.fill: parent
+        visible: compactRoot.displayMode === "cost"
+        text: "$" + (root.totalCost ?? 0).toFixed(2)
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        font.bold: true
+        font.pointSize: Math.max(Kirigami.Theme.smallFont.pointSize, height * 0.35)
+        minimumPointSize: Kirigami.Theme.smallFont.pointSize
+        fontSizeMode: Text.Fit
+        color: {
+            var cost = root.totalCost ?? 0;
+            if (cost > 10) return Kirigami.Theme.negativeTextColor;
+            if (cost > 5) return Kirigami.Theme.neutralTextColor;
+            return Kirigami.Theme.textColor;
+        }
+    }
+
+    // Count mode
+    RowLayout {
+        anchors.fill: parent
+        visible: compactRoot.displayMode === "count"
+        spacing: Kirigami.Units.smallSpacing / 2
+
+        Kirigami.Icon {
+            source: "cpu"
+            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+        }
+
+        PlasmaComponents.Label {
+            text: (root.connectedCount ?? 0).toString()
+            font.bold: true
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+
+    // Spinning indicator when loading (all modes)
     PlasmaComponents.BusyIndicator {
         anchors.fill: parent
         visible: compactRoot.anyLoading

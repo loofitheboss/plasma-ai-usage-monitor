@@ -9,10 +9,8 @@ import org.kde.kirigami as Kirigami
 PlasmaExtras.Representation {
     id: fullRoot
 
-    implicitWidth: Kirigami.Units.gridUnit * 22
-    implicitHeight: Kirigami.Units.gridUnit * 24
-
-    // Access backends via QML dynamic scoping to root PlasmoidItem (id: root in main.qml)
+    implicitWidth: Kirigami.Units.gridUnit * 24
+    implicitHeight: Kirigami.Units.gridUnit * 28
 
     header: PlasmaExtras.PlasmoidHeading {
         RowLayout {
@@ -33,9 +31,7 @@ PlasmaExtras.Representation {
 
             PlasmaComponents.ToolButton {
                 icon.name: "view-refresh"
-                onClicked: {
-                    root.refreshAll();
-                }
+                onClicked: root.refreshAll()
                 PlasmaComponents.ToolTip { text: i18n("Refresh all providers") }
             }
 
@@ -47,10 +43,9 @@ PlasmaExtras.Representation {
         }
     }
 
-    // Main content
     ColumnLayout {
         anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+        spacing: 0
 
         // No providers configured message
         PlasmaExtras.PlaceholderMessage {
@@ -68,60 +63,252 @@ PlasmaExtras.Representation {
             }
         }
 
-        // Scrollable list of provider cards
-        PlasmaComponents.ScrollView {
+        // Provider status summary bar
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.margins: Kirigami.Units.smallSpacing
+            visible: hasAnyProvider()
+            spacing: Kirigami.Units.smallSpacing
+
+            Repeater {
+                model: root.allProviders ?? []
+
+                Rectangle {
+                    visible: modelData.enabled
+                    width: Kirigami.Units.smallSpacing * 3
+                    height: width
+                    radius: width / 2
+                    color: {
+                        if (!modelData.backend) return Kirigami.Theme.disabledTextColor;
+                        if (modelData.backend.error) return Kirigami.Theme.negativeTextColor;
+                        if (modelData.backend.connected) return Kirigami.Theme.positiveTextColor;
+                        if (modelData.backend.loading) return Kirigami.Theme.neutralTextColor;
+                        return Kirigami.Theme.disabledTextColor;
+                    }
+
+                    Behavior on color {
+                        ColorAnimation { duration: 200 }
+                    }
+
+                    PlasmaComponents.ToolTip {
+                        text: modelData.name + ": " + (modelData.backend?.connected ? i18n("Connected") : i18n("Disconnected"))
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            PlasmaComponents.Label {
+                text: i18n("%1 active", root.connectedCount ?? 0)
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                opacity: 0.6
+            }
+        }
+
+        // Tab bar for Live / History views
+        QQC2.TabBar {
+            id: tabBar
+            Layout.fillWidth: true
+            visible: hasAnyProvider()
+
+            QQC2.TabButton {
+                text: i18n("Live")
+                width: implicitWidth
+            }
+            QQC2.TabButton {
+                text: i18n("History")
+                width: implicitWidth
+            }
+        }
+
+        // Tab content
+        QQC2.StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: hasAnyProvider()
+            currentIndex: tabBar.currentIndex
 
-            contentItem: Flickable {
-                contentHeight: providerColumn.implicitHeight
-                clip: true
+            // ── Live Tab ──
+            PlasmaComponents.ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
-                ColumnLayout {
-                    id: providerColumn
-                    width: parent.width
-                    spacing: Kirigami.Units.mediumSpacing
+                contentItem: Flickable {
+                    contentHeight: liveColumn.implicitHeight
+                    clip: true
 
-                    // OpenAI Card
-                    ProviderCard {
-                        Layout.fillWidth: true
-                        visible: plasmoid.configuration.openaiEnabled
-                        providerName: "OpenAI"
-                        providerIcon: "globe" // fallback system icon
-                        providerColor: "#10A37F"
-                        backend: root.openai ?? null
-                        showCost: true
-                        showUsage: true
+                    ColumnLayout {
+                        id: liveColumn
+                        width: parent.width
+                        spacing: Kirigami.Units.mediumSpacing
+
+                        // Cost summary card (shows total cost across all providers)
+                        CostSummaryCard {
+                            Layout.fillWidth: true
+                            Layout.margins: Kirigami.Units.smallSpacing
+                            visible: hasCostData()
+                            providers: root.allProviders ?? []
+                        }
+
+                        // Provider cards
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.openaiEnabled
+                            providerName: "OpenAI"
+                            providerIcon: "globe"
+                            providerColor: "#10A37F"
+                            backend: root.openai ?? null
+                            showCost: true
+                            showUsage: true
+                        }
+
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.anthropicEnabled
+                            providerName: "Anthropic"
+                            providerIcon: "globe"
+                            providerColor: "#D4A574"
+                            backend: root.anthropic ?? null
+                            showCost: false
+                            showUsage: false
+                        }
+
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.googleEnabled
+                            providerName: "Google Gemini"
+                            providerIcon: "globe"
+                            providerColor: "#4285F4"
+                            backend: root.google ?? null
+                            showCost: false
+                            showUsage: false
+                        }
+
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.mistralEnabled
+                            providerName: "Mistral AI"
+                            providerIcon: "globe"
+                            providerColor: "#FF7000"
+                            backend: root.mistral ?? null
+                            showCost: true
+                            showUsage: true
+                        }
+
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.deepseekEnabled
+                            providerName: "DeepSeek"
+                            providerIcon: "globe"
+                            providerColor: "#5B6EE1"
+                            backend: root.deepseek ?? null
+                            showCost: true
+                            showUsage: true
+                        }
+
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.groqEnabled
+                            providerName: "Groq"
+                            providerIcon: "globe"
+                            providerColor: "#F55036"
+                            backend: root.groq ?? null
+                            showCost: true
+                            showUsage: true
+                        }
+
+                        ProviderCard {
+                            Layout.fillWidth: true
+                            visible: plasmoid.configuration.xaiEnabled
+                            providerName: "xAI / Grok"
+                            providerIcon: "globe"
+                            providerColor: "#1DA1F2"
+                            backend: root.xai ?? null
+                            showCost: true
+                            showUsage: true
+                        }
+
+                        Item { Layout.fillHeight: true }
                     }
-
-                    // Anthropic Card
-                    ProviderCard {
-                        Layout.fillWidth: true
-                        visible: plasmoid.configuration.anthropicEnabled
-                        providerName: "Anthropic"
-                        providerIcon: "globe"
-                        providerColor: "#D4A574"
-                        backend: root.anthropic ?? null
-                        showCost: false
-                        showUsage: false
-                    }
-
-                    // Google Gemini Card
-                    ProviderCard {
-                        Layout.fillWidth: true
-                        visible: plasmoid.configuration.googleEnabled
-                        providerName: "Google Gemini"
-                        providerIcon: "globe"
-                        providerColor: "#4285F4"
-                        backend: root.google ?? null
-                        showCost: false
-                        showUsage: false
-                    }
-
-                    // Bottom spacer
-                    Item { Layout.fillHeight: true }
                 }
+            }
+
+            // ── History Tab ──
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: Kirigami.Units.smallSpacing
+
+                // Time range selector
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: Kirigami.Units.smallSpacing
+                    spacing: Kirigami.Units.smallSpacing
+
+                    PlasmaComponents.Label {
+                        text: i18n("Range:")
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize
+                        opacity: 0.7
+                    }
+
+                    QQC2.ComboBox {
+                        id: historyProviderCombo
+                        model: getEnabledProviderNames()
+                        Layout.fillWidth: true
+                    }
+
+                    QQC2.ComboBox {
+                        id: timeRangeCombo
+                        model: [i18n("24 hours"), i18n("7 days"), i18n("30 days")]
+                        currentIndex: 1
+                    }
+
+                    PlasmaComponents.ToolButton {
+                        icon.name: "view-refresh"
+                        onClicked: refreshHistory()
+                        PlasmaComponents.ToolTip { text: i18n("Refresh history") }
+                    }
+                }
+
+                // Usage chart
+                UsageChart {
+                    id: historyChart
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 10
+                    Layout.margins: Kirigami.Units.smallSpacing
+                }
+
+                // Trend summary
+                TrendSummary {
+                    id: trendSummary
+                    Layout.fillWidth: true
+                    Layout.margins: Kirigami.Units.smallSpacing
+                }
+
+                // Export buttons
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: Kirigami.Units.smallSpacing
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Item { Layout.fillWidth: true }
+
+                    PlasmaComponents.ToolButton {
+                        icon.name: "document-export"
+                        text: i18n("CSV")
+                        onClicked: exportData("csv")
+                        PlasmaComponents.ToolTip { text: i18n("Export as CSV") }
+                    }
+
+                    PlasmaComponents.ToolButton {
+                        icon.name: "document-export"
+                        text: i18n("JSON")
+                        onClicked: exportData("json")
+                        PlasmaComponents.ToolTip { text: i18n("Export as JSON") }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
 
@@ -143,9 +330,94 @@ PlasmaExtras.Representation {
         }
     }
 
+    // ── Functions ──
+
     function hasAnyProvider() {
         return plasmoid.configuration.openaiEnabled
             || plasmoid.configuration.anthropicEnabled
-            || plasmoid.configuration.googleEnabled;
+            || plasmoid.configuration.googleEnabled
+            || plasmoid.configuration.mistralEnabled
+            || plasmoid.configuration.deepseekEnabled
+            || plasmoid.configuration.groqEnabled
+            || plasmoid.configuration.xaiEnabled;
+    }
+
+    function hasCostData() {
+        var providers = root.allProviders ?? [];
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i].enabled && providers[i].backend && providers[i].backend.cost > 0)
+                return true;
+        }
+        return false;
+    }
+
+    function getEnabledProviderNames() {
+        var names = [];
+        var providers = root.allProviders ?? [];
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i].enabled) names.push(providers[i].name);
+        }
+        return names.length > 0 ? names : [i18n("No providers")];
+    }
+
+    function getTimeRange() {
+        var now = new Date();
+        switch (timeRangeCombo.currentIndex) {
+            case 0: return new Date(now.getTime() - 24 * 60 * 60 * 1000);     // 24h
+            case 1: return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7d
+            case 2: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30d
+            default: return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        }
+    }
+
+    function refreshHistory() {
+        if (!root.usageDb) return;
+        var provider = historyProviderCombo.currentText;
+        if (!provider || provider === i18n("No providers")) return;
+
+        var from = getTimeRange();
+        var to = new Date();
+
+        var snapshots = root.usageDb.getSnapshots(provider, from, to);
+        var summary = root.usageDb.getSummary(provider, from, to);
+        var dailyCosts = root.usageDb.getDailyCosts(provider, from, to);
+
+        historyChart.chartData = snapshots;
+        historyChart.provider = provider;
+        trendSummary.summaryData = summary;
+        trendSummary.dailyCosts = dailyCosts;
+        trendSummary.provider = provider;
+    }
+
+    function exportData(format) {
+        if (!root.usageDb) return;
+        var provider = historyProviderCombo.currentText;
+        if (!provider || provider === i18n("No providers")) return;
+
+        var from = getTimeRange();
+        var to = new Date();
+
+        var data;
+        if (format === "csv") {
+            data = root.usageDb.exportCsv(provider, from, to);
+        } else {
+            data = root.usageDb.exportJson(provider, from, to);
+        }
+
+        // Copy to clipboard
+        if (data) {
+            clipboard.setText(data);
+        }
+    }
+
+    // Clipboard helper
+    QQC2.TextArea {
+        id: clipboard
+        visible: false
+        function setText(t) {
+            text = t;
+            selectAll();
+            copy();
+        }
     }
 }

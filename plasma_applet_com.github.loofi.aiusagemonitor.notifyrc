@@ -14,3 +14,21 @@ Name=API Error
 Comment=An API call to a provider failed
 Flags=Popup
 Action=Popup
+
+[Event/budgetWarning]
+Name=Budget Warning
+Comment=A provider has exceeded its daily or monthly budget limit
+Flags=Popup
+Action=Popup
+
+[Event/providerDisconnected]
+Name=Provider Disconnected
+Comment=A provider has become unreachable after consecutive errors
+Flags=Popup
+Action=Popup
+
+[Event/providerReconnected]
+Name=Provider Reconnected
+Comment=A previously disconnected provider has reconnected
+Flags=Popup
+Action=Popup

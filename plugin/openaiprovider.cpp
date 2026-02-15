@@ -49,7 +49,7 @@ void OpenAIProvider::fetchUsage()
     QDateTime now = QDateTime::currentDateTimeUtc();
     QDateTime dayAgo = now.addDays(-1);
 
-    QUrl url(QStringLiteral("%1/organization/usage/completions").arg(QLatin1String(BASE_URL)));
+    QUrl url(QStringLiteral("%1/organization/usage/completions").arg(effectiveBaseUrl(BASE_URL)));
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("start_time"), QString::number(dayAgo.toSecsSinceEpoch()));
     query.addQueryItem(QStringLiteral("end_time"), QString::number(now.toSecsSinceEpoch()));
@@ -81,7 +81,7 @@ void OpenAIProvider::fetchCosts()
     QDateTime now = QDateTime::currentDateTimeUtc();
     QDateTime dayAgo = now.addDays(-1);
 
-    QUrl url(QStringLiteral("%1/organization/costs").arg(QLatin1String(BASE_URL)));
+    QUrl url(QStringLiteral("%1/organization/costs").arg(effectiveBaseUrl(BASE_URL)));
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("start_time"), QString::number(dayAgo.toSecsSinceEpoch()));
     query.addQueryItem(QStringLiteral("end_time"), QString::number(now.toSecsSinceEpoch()));
@@ -134,10 +134,14 @@ void OpenAIProvider::onUsageReply(QNetworkReply *reply)
     int rlTokRemaining = readHeader("x-ratelimit-remaining-tokens");
     QString rlResetReq = QString::fromUtf8(reply->rawHeader("x-ratelimit-reset-requests"));
 
-    if (rlRequests > 0) setRateLimitRequests(rlRequests);
-    if (rlTokens > 0) setRateLimitTokens(rlTokens);
-    if (rlReqRemaining > 0) setRateLimitRequestsRemaining(rlReqRemaining);
-    if (rlTokRemaining > 0) setRateLimitTokensRemaining(rlTokRemaining);
+    if (rlRequests > 0) {
+        setRateLimitRequests(rlRequests);
+        setRateLimitRequestsRemaining(rlReqRemaining); // Can be 0 when fully depleted
+    }
+    if (rlTokens > 0) {
+        setRateLimitTokens(rlTokens);
+        setRateLimitTokensRemaining(rlTokRemaining); // Can be 0 when fully depleted
+    }
     if (!rlResetReq.isEmpty()) setRateLimitResetTime(rlResetReq);
 
     // Parse JSON body
@@ -206,7 +210,9 @@ void OpenAIProvider::onCostsReply(QNetworkReply *reply)
         }
     }
 
-    setCost(totalCost / 100.0); // API returns cents
+    double costDollars = totalCost / 100.0; // API returns cents
+    setCost(costDollars);
+    setDailyCost(costDollars); // 24h window = daily cost
     checkAllDone();
 }
 

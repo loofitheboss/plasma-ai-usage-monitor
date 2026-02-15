@@ -17,4 +17,14 @@ ConfigModel {
         icon: "dialog-warning"
         source: "configAlerts.qml"
     }
+    ConfigCategory {
+        name: i18n("Budget")
+        icon: "wallet-open"
+        source: "configBudget.qml"
+    }
+    ConfigCategory {
+        name: i18n("History")
+        icon: "office-chart-line"
+        source: "configHistory.qml"
+    }
 }
