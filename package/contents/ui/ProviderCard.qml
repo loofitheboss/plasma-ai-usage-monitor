@@ -14,6 +14,7 @@ ColumnLayout {
     required property var backend
     property bool showCost: false
     property bool showUsage: false
+    property bool collapsed: false
 
     spacing: 0
 
@@ -29,9 +30,29 @@ ColumnLayout {
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
 
+        Accessible.role: Accessible.Grouping
+        Accessible.name: {
+            var status = "";
+            if (!card.backend) status = i18n("not available");
+            else if (card.backend.error) status = i18n("error");
+            else if (card.backend.connected) status = i18n("connected");
+            else status = i18n("disconnected");
+
+            var desc = card.providerName + ", " + status;
+            if (card.backend && card.backend.connected && card.showCost) {
+                desc += ", $" + (card.backend.cost ?? 0).toFixed(4);
+            }
+            return desc;
+        }
+
         Behavior on border.color {
             ColorAnimation { duration: 200 }
         }
+        Behavior on Layout.preferredHeight {
+            NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+        }
+
+        clip: true
 
         ColumnLayout {
             id: cardContent
@@ -41,7 +62,7 @@ ColumnLayout {
             }
             spacing: Kirigami.Units.mediumSpacing
 
-            // Header row: provider name + status
+            // Header row: provider name + status (clickable to collapse/expand)
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
@@ -117,12 +138,31 @@ ColumnLayout {
                     visible: card.backend?.loading ?? false
                     running: visible
                 }
+
+                // Compact cost when collapsed
+                PlasmaComponents.Label {
+                    visible: card.collapsed && card.showCost && (card.backend?.connected ?? false)
+                    text: "$" + (card.backend?.cost ?? 0).toFixed(2)
+                    font.bold: true
+                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    opacity: 0.7
+                }
+
+                // Collapse/expand toggle
+                PlasmaComponents.ToolButton {
+                    icon.name: card.collapsed ? "arrow-down" : "arrow-up"
+                    display: PlasmaComponents.AbstractButton.IconOnly
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    onClicked: card.collapsed = !card.collapsed
+                    PlasmaComponents.ToolTip { text: card.collapsed ? i18n("Expand") : i18n("Collapse") }
+                }
             }
 
             // Error message (expandable)
             ColumnLayout {
                 Layout.fillWidth: true
-                visible: (card.backend?.error ?? "") !== ""
+                visible: !card.collapsed && (card.backend?.error ?? "") !== ""
                 spacing: Kirigami.Units.smallSpacing / 2
 
                 RowLayout {
@@ -172,13 +212,13 @@ ColumnLayout {
             // Separator
             Kirigami.Separator {
                 Layout.fillWidth: true
-                visible: card.backend?.connected ?? false
+                visible: !card.collapsed && (card.backend?.connected ?? false)
             }
 
             // Usage data (for providers with usage APIs)
             GridLayout {
                 Layout.fillWidth: true
-                visible: card.showUsage && (card.backend?.connected ?? false)
+                visible: !card.collapsed && card.showUsage && (card.backend?.connected ?? false)
                 columns: 2
                 columnSpacing: Kirigami.Units.largeSpacing
                 rowSpacing: Kirigami.Units.smallSpacing
@@ -220,7 +260,7 @@ ColumnLayout {
             // Cost display
             RowLayout {
                 Layout.fillWidth: true
-                visible: card.showCost && (card.backend?.connected ?? false)
+                visible: !card.collapsed && card.showCost && (card.backend?.connected ?? false)
                 spacing: Kirigami.Units.smallSpacing
 
                 PlasmaComponents.Label {
@@ -259,7 +299,7 @@ ColumnLayout {
             // Budget progress bars
             ColumnLayout {
                 Layout.fillWidth: true
-                visible: card.backend?.connected ?? false
+                visible: !card.collapsed && (card.backend?.connected ?? false)
                 spacing: Kirigami.Units.smallSpacing
 
                 // Daily budget bar
@@ -373,13 +413,13 @@ ColumnLayout {
             // Separator before rate limits
             Kirigami.Separator {
                 Layout.fillWidth: true
-                visible: card.backend?.connected ?? false
+                visible: !card.collapsed && (card.backend?.connected ?? false)
             }
 
             // Rate limits section
             ColumnLayout {
                 Layout.fillWidth: true
-                visible: card.backend?.connected ?? false
+                visible: !card.collapsed && (card.backend?.connected ?? false)
                 spacing: Kirigami.Units.smallSpacing
 
                 PlasmaComponents.Label {
@@ -505,7 +545,7 @@ ColumnLayout {
             // Last refreshed with relative time
             PlasmaComponents.Label {
                 Layout.fillWidth: true
-                visible: card.backend?.connected ?? false
+                visible: !card.collapsed && (card.backend?.connected ?? false)
                 horizontalAlignment: Text.AlignRight
                 text: {
                     var lr = card.backend?.lastRefreshed;

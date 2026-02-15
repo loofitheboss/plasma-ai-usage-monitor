@@ -49,6 +49,9 @@ ColumnLayout {
         border.width: 1
         border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.2)
 
+        Accessible.role: Accessible.Grouping
+        Accessible.name: i18n("Total cost: $%1", costCard.totalCost.toFixed(4))
+
         ColumnLayout {
             id: costContent
             anchors {

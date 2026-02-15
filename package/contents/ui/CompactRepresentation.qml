@@ -10,6 +10,9 @@ MouseArea {
 
     readonly property var providers: root.allProviders ?? []
 
+    Accessible.role: Accessible.Button
+    Accessible.name: i18n("AI Usage Monitor: %1 providers connected", root.connectedCount ?? 0)
+
     readonly property bool hasWarning: {
         for (var i = 0; i < providers.length; i++) {
             var p = providers[i];

@@ -151,82 +151,20 @@ PlasmaExtras.Representation {
                             providers: root.allProviders ?? []
                         }
 
-                        // Provider cards
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.openaiEnabled
-                            providerName: "OpenAI"
-                            providerIcon: "globe"
-                            providerColor: "#10A37F"
-                            backend: root.openai ?? null
-                            showCost: true
-                            showUsage: true
-                        }
+                        // Provider cards (data-driven)
+                        Repeater {
+                            model: root.allProviders ?? []
 
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.anthropicEnabled
-                            providerName: "Anthropic"
-                            providerIcon: "globe"
-                            providerColor: "#D4A574"
-                            backend: root.anthropic ?? null
-                            showCost: true
-                            showUsage: true
-                        }
-
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.googleEnabled
-                            providerName: "Google Gemini"
-                            providerIcon: "globe"
-                            providerColor: "#4285F4"
-                            backend: root.google ?? null
-                            showCost: true
-                            showUsage: true
-                        }
-
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.mistralEnabled
-                            providerName: "Mistral AI"
-                            providerIcon: "globe"
-                            providerColor: "#FF7000"
-                            backend: root.mistral ?? null
-                            showCost: true
-                            showUsage: true
-                        }
-
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.deepseekEnabled
-                            providerName: "DeepSeek"
-                            providerIcon: "globe"
-                            providerColor: "#5B6EE1"
-                            backend: root.deepseek ?? null
-                            showCost: true
-                            showUsage: true
-                        }
-
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.groqEnabled
-                            providerName: "Groq"
-                            providerIcon: "globe"
-                            providerColor: "#F55036"
-                            backend: root.groq ?? null
-                            showCost: true
-                            showUsage: true
-                        }
-
-                        ProviderCard {
-                            Layout.fillWidth: true
-                            visible: plasmoid.configuration.xaiEnabled
-                            providerName: "xAI / Grok"
-                            providerIcon: "globe"
-                            providerColor: "#1DA1F2"
-                            backend: root.xai ?? null
-                            showCost: true
-                            showUsage: true
+                            ProviderCard {
+                                Layout.fillWidth: true
+                                visible: modelData.enabled
+                                providerName: modelData.name
+                                providerIcon: "globe"
+                                providerColor: modelData.color
+                                backend: modelData.backend ?? null
+                                showCost: true
+                                showUsage: true
+                            }
                         }
 
                         Item { Layout.fillHeight: true }

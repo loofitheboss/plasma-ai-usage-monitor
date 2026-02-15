@@ -16,17 +16,9 @@ PlasmoidItem {
     toolTipMainText: i18n("AI Usage Monitor")
     toolTipSubText: {
         var lines = [];
-        var allProviders = [
-            { name: "OpenAI", backend: openaiBackend, enabled: plasmoid.configuration.openaiEnabled },
-            { name: "Anthropic", backend: anthropicBackend, enabled: plasmoid.configuration.anthropicEnabled },
-            { name: "Gemini", backend: googleBackend, enabled: plasmoid.configuration.googleEnabled },
-            { name: "Mistral", backend: mistralBackend, enabled: plasmoid.configuration.mistralEnabled },
-            { name: "DeepSeek", backend: deepseekBackend, enabled: plasmoid.configuration.deepseekEnabled },
-            { name: "Groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled },
-            { name: "xAI", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled }
-        ];
-        for (var i = 0; i < allProviders.length; i++) {
-            var p = allProviders[i];
+        var providers = root.allProviders;
+        for (var i = 0; i < providers.length; i++) {
+            var p = providers[i];
             if (p.enabled && p.backend.connected) {
                 var info = p.name + ": ";
                 if (p.backend.cost > 0)
@@ -401,13 +393,13 @@ PlasmoidItem {
     // ── Helper: all provider info ──
 
     readonly property var allProviders: [
-        { name: "OpenAI", backend: openaiBackend, enabled: plasmoid.configuration.openaiEnabled, color: "#10A37F" },
-        { name: "Anthropic", backend: anthropicBackend, enabled: plasmoid.configuration.anthropicEnabled, color: "#D4A574" },
-        { name: "Google Gemini", backend: googleBackend, enabled: plasmoid.configuration.googleEnabled, color: "#4285F4" },
-        { name: "Mistral AI", backend: mistralBackend, enabled: plasmoid.configuration.mistralEnabled, color: "#FF7000" },
-        { name: "DeepSeek", backend: deepseekBackend, enabled: plasmoid.configuration.deepseekEnabled, color: "#5B6EE1" },
-        { name: "Groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled, color: "#F55036" },
-        { name: "xAI", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" }
+        { name: "OpenAI", configKey: "openai", backend: openaiBackend, enabled: plasmoid.configuration.openaiEnabled, color: "#10A37F" },
+        { name: "Anthropic", configKey: "anthropic", backend: anthropicBackend, enabled: plasmoid.configuration.anthropicEnabled, color: "#D4A574" },
+        { name: "Google Gemini", configKey: "google", backend: googleBackend, enabled: plasmoid.configuration.googleEnabled, color: "#4285F4" },
+        { name: "Mistral AI", configKey: "mistral", backend: mistralBackend, enabled: plasmoid.configuration.mistralEnabled, color: "#FF7000" },
+        { name: "DeepSeek", configKey: "deepseek", backend: deepseekBackend, enabled: plasmoid.configuration.deepseekEnabled, color: "#5B6EE1" },
+        { name: "Groq", configKey: "groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled, color: "#F55036" },
+        { name: "xAI / Grok", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" }
     ]
 
     readonly property int connectedCount: {
@@ -430,36 +422,18 @@ PlasmoidItem {
     // ── Functions ──
 
     function refreshAll() {
-        var providers = [
-            { enabled: plasmoid.configuration.openaiEnabled, backend: openaiBackend },
-            { enabled: plasmoid.configuration.anthropicEnabled, backend: anthropicBackend },
-            { enabled: plasmoid.configuration.googleEnabled, backend: googleBackend },
-            { enabled: plasmoid.configuration.mistralEnabled, backend: mistralBackend },
-            { enabled: plasmoid.configuration.deepseekEnabled, backend: deepseekBackend },
-            { enabled: plasmoid.configuration.groqEnabled, backend: groqBackend },
-            { enabled: plasmoid.configuration.xaiEnabled, backend: xaiBackend }
-        ];
-        for (var i = 0; i < providers.length; i++) {
-            if (providers[i].enabled && providers[i].backend.hasApiKey()) {
-                providers[i].backend.refresh();
+        for (var i = 0; i < allProviders.length; i++) {
+            if (allProviders[i].enabled && allProviders[i].backend.hasApiKey()) {
+                allProviders[i].backend.refresh();
             }
         }
     }
 
     function loadApiKeys() {
-        var providers = [
-            { name: "openai", enabled: plasmoid.configuration.openaiEnabled, backend: openaiBackend },
-            { name: "anthropic", enabled: plasmoid.configuration.anthropicEnabled, backend: anthropicBackend },
-            { name: "google", enabled: plasmoid.configuration.googleEnabled, backend: googleBackend },
-            { name: "mistral", enabled: plasmoid.configuration.mistralEnabled, backend: mistralBackend },
-            { name: "deepseek", enabled: plasmoid.configuration.deepseekEnabled, backend: deepseekBackend },
-            { name: "groq", enabled: plasmoid.configuration.groqEnabled, backend: groqBackend },
-            { name: "xai", enabled: plasmoid.configuration.xaiEnabled, backend: xaiBackend }
-        ];
-        for (var i = 0; i < providers.length; i++) {
-            if (providers[i].enabled) {
-                var key = secrets.getKey(providers[i].name);
-                if (key) providers[i].backend.setApiKey(key);
+        for (var i = 0; i < allProviders.length; i++) {
+            if (allProviders[i].enabled) {
+                var key = secrets.getKey(allProviders[i].configKey);
+                if (key) allProviders[i].backend.setApiKey(key);
             }
         }
 
