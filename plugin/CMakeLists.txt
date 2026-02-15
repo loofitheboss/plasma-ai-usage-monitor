@@ -27,6 +27,7 @@ set(aiusagemonitor_HDRS
     xaiprovider.h
     usagedatabase.h
     clipboardhelper.h
+    updatechecker.h
 )
 
 add_library(aiusagemonitorplugin SHARED ${aiusagemonitor_SRCS} ${aiusagemonitor_HDRS})

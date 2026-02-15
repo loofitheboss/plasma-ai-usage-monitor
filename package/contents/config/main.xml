@@ -180,6 +180,16 @@
         <entry name="xaiNotificationsEnabled" type="Bool">
             <default>true</default>
         </entry>
+
+        <!-- Update notifications -->
+        <entry name="notifyOnUpdate" type="Bool">
+            <default>true</default>
+            <label>Show notification when a new version is available</label>
+        </entry>
+        <entry name="updateCheckInterval" type="Int">
+            <default>12</default>
+            <label>Hours between update checks</label>
+        </entry>
     </group>
 
     <group name="Budget">

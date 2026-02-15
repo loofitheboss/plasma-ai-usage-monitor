@@ -29,6 +29,8 @@ KCM.SimpleKCM {
     property alias cfg_deepseekNotificationsEnabled: deepseekNotifySwitch.checked
     property alias cfg_groqNotificationsEnabled: groqNotifySwitch.checked
     property alias cfg_xaiNotificationsEnabled: xaiNotifySwitch.checked
+    property alias cfg_notifyOnUpdate: updateNotifySwitch.checked
+    property alias cfg_updateCheckInterval: updateCheckSpinBox.value
 
     Kirigami.FormLayout {
         anchors.fill: parent
@@ -199,6 +201,43 @@ KCM.SimpleKCM {
             Kirigami.FormData.label: i18n("xAI / Grok:")
             enabled: alertsSwitch.checked
             checked: plasmoid.configuration.xaiNotificationsEnabled
+        }
+
+        // ── Update Notifications ──
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: i18n("Update Notifications")
+        }
+
+        QQC2.Switch {
+            id: updateNotifySwitch
+            Kirigami.FormData.label: i18n("Notify on new version:")
+            enabled: alertsSwitch.checked
+            checked: plasmoid.configuration.notifyOnUpdate
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("Check every:")
+            enabled: alertsSwitch.checked && updateNotifySwitch.checked
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.SpinBox {
+                id: updateCheckSpinBox
+                from: 1; to: 168; stepSize: 1
+                value: plasmoid.configuration.updateCheckInterval
+            }
+
+            QQC2.Label {
+                text: i18n("hours")
+                opacity: 0.7
+            }
+        }
+
+        QQC2.Label {
+            text: i18n("Checks GitHub for new releases and shows a KDE notification when an update is available.")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.5; wrapMode: Text.WordWrap; Layout.fillWidth: true
+            enabled: alertsSwitch.checked
         }
 
         // ── Cooldown & DND ──

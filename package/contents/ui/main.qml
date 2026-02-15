@@ -294,6 +294,29 @@ PlasmoidItem {
         iconName: "network-disconnect"
     }
 
+    Notification {
+        id: updateNotification
+        componentName: "plasma_applet_com.github.loofi.aiusagemonitor"
+        eventId: "updateAvailable"
+        title: i18n("AI Usage Monitor - Update Available")
+        iconName: "update-none"
+    }
+
+    // ── Update Checker ──
+
+    UpdateChecker {
+        id: updateChecker
+        currentVersion: "2.1.0"
+        checkIntervalHours: plasmoid.configuration.updateCheckInterval || 12
+
+        onUpdateAvailable: function(latestVersion, releaseUrl) {
+            if (!plasmoid.configuration.notifyOnUpdate) return;
+            updateNotification.text = i18n("Version %1 is available! Visit %2 to update.",
+                                           latestVersion, releaseUrl);
+            updateNotification.sendEvent();
+        }
+    }
+
     // ── UI Representations ──
 
     compactRepresentation: CompactRepresentation {}

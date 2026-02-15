@@ -10,6 +10,7 @@
 #include "xaiprovider.h"
 #include "usagedatabase.h"
 #include "clipboardhelper.h"
+#include "updatechecker.h"
 
 #include <QQmlEngine>
 
@@ -28,6 +29,7 @@ void AiUsagePlugin::registerTypes(const char *uri)
     qmlRegisterType<XAIProvider>(uri, 1, 0, "XAIProvider");
     qmlRegisterType<UsageDatabase>(uri, 1, 0, "UsageDatabase");
     qmlRegisterType<ClipboardHelper>(uri, 1, 0, "ClipboardHelper");
+    qmlRegisterType<UpdateChecker>(uri, 1, 0, "UpdateChecker");
 
     // Register abstract base as uncreatable (for type info in QML)
     qmlRegisterUncreatableType<ProviderBackend>(uri, 1, 0, "ProviderBackend",
