@@ -1,0 +1,10 @@
+build/
+*.o
+*.so
+*.qmlc
+*.jsc
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*_autogen/

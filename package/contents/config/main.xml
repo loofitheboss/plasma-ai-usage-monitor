@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+    <kcfgfile name=""/>
+
+    <group name="General">
+        <entry name="refreshInterval" type="Int">
+            <default>300</default>
+            <label>Refresh interval in seconds</label>
+        </entry>
+        <entry name="compactDisplayMode" type="String">
+            <default>icon</default>
+            <label>What to show in compact mode: icon, cost, tokens</label>
+        </entry>
+    </group>
+
+    <group name="Providers">
+        <entry name="openaiEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="openaiModel" type="String">
+            <default>gpt-4o</default>
+        </entry>
+        <entry name="openaiProjectId" type="String">
+            <default></default>
+        </entry>
+
+        <entry name="anthropicEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="anthropicModel" type="String">
+            <default>claude-sonnet-4-20250514</default>
+        </entry>
+
+        <entry name="googleEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="googleModel" type="String">
+            <default>gemini-2.0-flash</default>
+        </entry>
+    </group>
+
+    <group name="Alerts">
+        <entry name="alertsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="warningThreshold" type="Int">
+            <default>80</default>
+            <label>Percentage of rate limit to trigger warning</label>
+        </entry>
+        <entry name="criticalThreshold" type="Int">
+            <default>95</default>
+            <label>Percentage of rate limit to trigger critical alert</label>
+        </entry>
+        <entry name="notifyOnError" type="Bool">
+            <default>true</default>
+        </entry>
+    </group>
+</kcfg>

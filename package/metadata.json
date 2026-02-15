@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "loofi@github.com",
+                "Name": "Loofi"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Monitor AI API token usage, rate limits, and costs across multiple providers",
+        "Icon": "cpu",
+        "Id": "com.github.loofi.aiusagemonitor",
+        "Name": "AI Usage Monitor",
+        "Version": "1.0.0",
+        "Website": "https://github.com/loofi/plasma-ai-usage-monitor"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

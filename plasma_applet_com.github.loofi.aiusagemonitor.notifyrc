@@ -1,0 +1,16 @@
+[Global]
+IconName=cpu
+Comment=AI Usage Monitor
+Name=AI Usage Monitor
+
+[Event/quotaWarning]
+Name=Rate Limit Warning
+Comment=Approaching API rate limit
+Flags=Popup
+Action=Popup
+
+[Event/apiError]
+Name=API Error
+Comment=An API call to a provider failed
+Flags=Popup
+Action=Popup
