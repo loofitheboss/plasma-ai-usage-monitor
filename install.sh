@@ -27,8 +27,13 @@ check_dep kf6-kwallet-devel
 check_dep kf6-ki18n-devel
 check_dep kf6-knotifications-devel
 
-# Qt6 SQL module (required for usage history database)
-check_dep qt6-qtbase-sql
+# Qt6 SQL / SQLite driver (bundled in qt6-qtbase on Fedora)
+# Verify the driver file exists rather than checking a non-existent package
+if [ ! -f /usr/lib64/qt6/plugins/sqldrivers/libqsqlite.so ] && \
+   [ ! -f /usr/lib/qt6/plugins/sqldrivers/libqsqlite.so ]; then
+    echo "Warning: Qt6 SQLite driver not found. Usage history may not work."
+    echo "  It is normally provided by the qt6-qtbase package."
+fi
 
 if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
     echo ""
