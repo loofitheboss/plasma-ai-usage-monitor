@@ -8,6 +8,7 @@ import org.kde.kirigami as Kirigami
 ColumnLayout {
     id: card
 
+    required property var modelData
     required property string providerName
     required property string providerIcon
     required property string providerColor

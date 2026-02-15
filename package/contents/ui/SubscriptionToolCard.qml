@@ -12,6 +12,7 @@ import org.kde.kirigami as Kirigami
 ColumnLayout {
     id: toolCard
 
+    required property var modelData
     required property string toolName
     required property string toolIcon
     required property string toolColor
