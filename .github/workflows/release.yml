@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake extra-cmake-modules g++ \
+            qt6-base-dev qt6-declarative-dev \
+            libkf6wallet-dev libkf6i18n-dev libkf6notifications-dev \
+            libplasma-dev
+
+      - name: Build
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+      - name: Package source tarball
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          git archive --format=tar.gz --prefix=plasma-ai-usage-monitor-${VERSION}/ \
+            -o plasma-ai-usage-monitor-${VERSION}.tar.gz HEAD
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          # Extract version from tag
+          VERSION=${GITHUB_REF_NAME#v}
+          
+          # Get commits since previous tag
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          if [ "$PREV_TAG" != "$GITHUB_REF_NAME" ]; then
+            echo "## Changes since ${PREV_TAG}" > release_notes.md
+            echo "" >> release_notes.md
+            git log --pretty=format:"- %s" ${PREV_TAG}..${GITHUB_REF_NAME} >> release_notes.md
+          else
+            echo "## Initial Release" > release_notes.md
+          fi
+          
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Installation" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "git clone https://github.com/${{ github.repository }}.git" >> release_notes.md
+          echo "cd plasma-ai-usage-monitor" >> release_notes.md
+          echo "git checkout ${GITHUB_REF_NAME}" >> release_notes.md
+          echo "./install.sh" >> release_notes.md
+          echo '```' >> release_notes.md
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: plasma-ai-usage-monitor-*.tar.gz
+          body_path: release_notes.md
+          make_latest: true
+          generate_release_notes: false
