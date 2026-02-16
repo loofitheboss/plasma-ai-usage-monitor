@@ -296,7 +296,9 @@ PlasmoidItem {
 
     UpdateChecker {
         id: updateChecker
-        currentVersion: AppInfo.version
+        currentVersion: (plasmoid.metaData && plasmoid.metaData.version)
+                        ? plasmoid.metaData.version
+                        : AppInfo.version
         checkIntervalHours: plasmoid.configuration.updateCheckInterval || 12
 
         onUpdateAvailable: function(latestVersion, releaseUrl) {

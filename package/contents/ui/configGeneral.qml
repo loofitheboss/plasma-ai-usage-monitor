@@ -220,7 +220,9 @@ KCM.SimpleKCM {
 
         QQC2.Label {
             Kirigami.FormData.label: i18n("Version:")
-            text: AppInfo.version
+            text: (plasmoid.metaData && plasmoid.metaData.version)
+                  ? plasmoid.metaData.version
+                  : AppInfo.version
         }
 
         QQC2.Label {
