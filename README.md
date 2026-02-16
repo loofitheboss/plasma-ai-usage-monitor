@@ -200,6 +200,8 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ./scripts/check_version_consistency.sh
+./scripts/check_no_hardcoded_versions.sh
+./scripts/show_installed_versions.sh
 ```
 
 ## Configuration
