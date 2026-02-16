@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.kcmutils as KCM
+import com.github.loofi.aiusagemonitor 1.0
 
 KCM.SimpleKCM {
     id: generalPage
@@ -219,7 +220,7 @@ KCM.SimpleKCM {
 
         QQC2.Label {
             Kirigami.FormData.label: i18n("Version:")
-            text: "2.3.0"
+            text: AppInfo.version
         }
 
         QQC2.Label {

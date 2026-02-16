@@ -33,6 +33,7 @@ A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, an
 - **Budget management** — Per-provider daily/monthly budgets with configurable warning thresholds and notifications when budgets are exceeded
 - **Usage history** — SQLite-backed persistence with configurable retention (7-365 days, default 90)
 - **Interactive charts** — Canvas-based line/area charts showing cost, tokens, requests, and rate limit trends over 24h/7d/30d
+- **Compare analytics mode** — Multi-series history comparison across providers or subscription tools with ranking, delta trends, compact legend chips, and hover crosshair/tooltip
 - **Trend summaries** — Total cost, average daily cost, peak usage, and snapshot counts per time range
 - **Rate limit visualization** — Progress bars with color-coded thresholds (green/yellow/red)
 - **Collapsible provider cards** — Click to collapse/expand; collapsed cards show a compact cost summary
@@ -178,6 +179,15 @@ If the widget doesn't appear after installation:
 plasmashell --replace &
 ```
 
+### Run Tests
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+./scripts/check_version_consistency.sh
+```
+
 ## Configuration
 
 Right-click the widget and select **Configure** to access six settings tabs:
@@ -224,6 +234,10 @@ Each provider has:
 
 - **Enable/disable** usage history recording
 - **Retention period** — How long to keep data (7-365 days, default 90)
+- **Detail mode** — Single-provider trends (cost/tokens/requests/rate limit) with trend summary
+- **Compare mode** — Multi-series comparison across providers or subscription tools with metric selector and ranking
+- **Responsive controls** — History controls are horizontally scrollable on narrow popups/mobile widths
+- **Clear states** — Loading, no-provider, no-history, and no-compare-data placeholders
 - **Database size** display
 - **Prune** button to manually clean old data
 
@@ -231,7 +245,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.7.0)
+├── CMakeLists.txt                  # Root build system (v2.8.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -249,6 +263,7 @@ plasma-ai-usage-monitor/
 │           ├── SubscriptionToolCard.qml   # Subscription tool usage card
 │           ├── CostSummaryCard.qml        # Aggregate cost breakdown
 │           ├── UsageChart.qml             # Canvas line/area chart
+│           ├── MultiSeriesChart.qml       # Multi-line compare chart for analytics mode
 │           ├── TrendSummary.qml           # Summary stats grid
 │           ├── configGeneral.qml
 │           ├── configProviders.qml
@@ -259,7 +274,8 @@ plasma-ai-usage-monitor/
 └── plugin/                         # C++ QML plugin
     ├── CMakeLists.txt
     ├── qmldir                      # QML module registration
-    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (15 types)
+    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (16 types)
+    ├── appinfo.{h,cpp}             # App version singleton for QML (build-version source of truth)
     ├── secretsmanager.{h,cpp}      # KWallet wrapper
     ├── clipboardhelper.h            # Clipboard copy/paste helper
     ├── providerbackend.{h,cpp}     # Abstract base class + cost estimation
@@ -282,8 +298,9 @@ plasma-ai-usage-monitor/
 
 ### C++ Plugin
 
-The QML plugin (`com.github.loofi.aiusagemonitor`) provides 15 types:
+The QML plugin (`com.github.loofi.aiusagemonitor`) provides 16 types:
 
+- **`AppInfo`** — QML singleton exposing the build version (`AppInfo.version`) so update checks and About pages stay in sync with CMake/package metadata.
 - **`SecretsManager`** — Wraps KWallet for secure API key storage. Uses wallet folder `"ai-usage-monitor"` with async open and a pending operations queue.
 - **`ProviderBackend`** (abstract) — Base class with properties for token usage, rate limits, cost tracking (real and estimated), budget management, error tracking, and custom base URL support. Includes per-model pricing tables and `updateEstimatedCost()` for token-based cost estimation. Signals for quota warnings, budget exceeded, provider disconnect/reconnect.
 - **`OpenAICompatibleProvider`** (abstract) — Intermediate base class for providers using OpenAI-compatible chat completions APIs. Handles sending a minimal completion request, parsing `x-ratelimit-*` headers, extracting token usage from response body, and calling `updateEstimatedCost()`. Subclasses only need to provide `name()`, `iconName()`, `defaultBaseUrl()`, and optionally override hooks.
@@ -295,7 +312,7 @@ The QML plugin (`com.github.loofi.aiusagemonitor`) provides 15 types:
 - **`GroqProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 5 Groq models.
 - **`XAIProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for grok-3, grok-3-mini, grok-2.
 - **`ClipboardHelper`** — Simple helper class for copying text to the system clipboard (replaces the previous TextArea workaround).
-- **`UsageDatabase`** — SQLite persistence with WAL mode, configurable retention, auto-pruning, and CSV/JSON export. Also stores subscription tool usage snapshots.
+- **`UsageDatabase`** — SQLite persistence with WAL mode, configurable retention, auto-pruning, CSV/JSON export, and aggregated provider/tool series APIs for compare analytics.
 - **`SubscriptionToolBackend`** (abstract) — Base class for subscription-based AI coding tool monitors. Tracks usage counts against fixed limits with rolling time windows (5-hour, daily, weekly, monthly). Supports dual primary/secondary periods, automatic period resets, and 80% limit warnings.
 - **`ClaudeCodeMonitor`** — Monitors Claude Code CLI usage via `QFileSystemWatcher` on `~/.claude/`. Supports Pro/Max 5x/Max 20x plans with dual 5-hour session and weekly rolling windows.
 - **`CodexCliMonitor`** — Monitors OpenAI Codex CLI usage via `QFileSystemWatcher` on `~/.codex/`. Supports Plus/Pro/Business plans with 5-hour rolling windows.
@@ -305,7 +322,8 @@ The QML plugin (`com.github.loofi.aiusagemonitor`) provides 15 types:
 
 - **`main.qml`** — Instantiates 7 C++ API backends + 3 subscription tool monitors, manages per-provider refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase. Uses `allProviders` and `allSubscriptionTools` arrays to drive tooltips, refresh, and notification routing.
 - **`CompactRepresentation.qml`** — Panel icon with 3 display modes (icon with status badge, cost display, provider count), smooth animations, and screen reader accessibility
-- **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, data-driven provider cards via Repeater, subscription tool cards section, cost summary, chart, trend summary, and export buttons
+- **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, data-driven provider cards via Repeater, subscription tool cards section, detail history, compare mode (providers/tools + metrics), responsive history controls, loading/empty states, and export buttons
+- **`MultiSeriesChart.qml`** — Multi-line comparison chart with compact legend chips, hover crosshair, and ranked per-series tooltip values
 - **`ProviderCard.qml`** — Collapsible card showing connection status, token usage, cost (real or estimated), rate limit bars, budget progress bars, error badges with expandable details, relative time display, and accessibility annotations
 - **`SubscriptionToolCard.qml`** — Card for subscription tool usage showing plan tier badge, color-coded progress bars for primary and secondary limits, time-until-reset countdown, last activity, limit-reached warning, and manual increment/reset buttons
 
@@ -367,6 +385,17 @@ The usage/costs endpoints require an Admin API key. Regular API keys will get a 
 Check that the History tab is enabled in configuration. Data is stored in `~/.local/share/plasma-ai-usage-monitor/usage_history.db`.
 
 ## Changelog
+
+### v2.8.0 — Reliability + Compare Analytics
+- Add `AppInfo.version` singleton and remove hardcoded UI version drift
+- Add compare analytics mode for cross-provider and cross-tool history views
+- Add multi-series chart with legend, ranked hover tooltip, and crosshair
+- Add history mapping fix (display label vs DB name) for Google/Mistral/xAI
+- Add provider notification gating consistency for quota/budget/connectivity/error alerts
+- Add explicit loading/empty states and export gating in History
+- Add aggregated series APIs: `getProviderSeries()` and `getToolSeries()`
+- Add test coverage for series metrics/bucketing and history mapping regressions
+- Add version-consistency CI test and run `ctest` in GitHub Actions
 
 ### v2.7.0 — Final Polish & Hardening
 - Fix reply-after-deleteLater in OpenAI costs and monthly costs handlers

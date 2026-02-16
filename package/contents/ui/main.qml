@@ -296,7 +296,7 @@ PlasmoidItem {
 
     UpdateChecker {
         id: updateChecker
-        currentVersion: "2.3.0"
+        currentVersion: AppInfo.version
         checkIntervalHours: plasmoid.configuration.updateCheckInterval || 12
 
         onUpdateAvailable: function(latestVersion, releaseUrl) {
@@ -526,6 +526,25 @@ PlasmoidItem {
         };
     }
 
+    function providerConfigKey(providerName) {
+        for (var i = 0; i < allProviders.length; i++) {
+            var p = allProviders[i];
+            if (p.name === providerName
+                || p.dbName === providerName
+                || p.name.indexOf(providerName) === 0
+                || providerName.indexOf(p.name) === 0) {
+                return p.configKey;
+            }
+        }
+        return "";
+    }
+
+    function isProviderNotificationEnabled(providerName) {
+        var key = providerConfigKey(providerName);
+        if (key === "") return true;
+        return plasmoid.configuration[key + "NotificationsEnabled"];
+    }
+
     function canNotify(eventKey) {
         var cooldown = plasmoid.configuration.notificationCooldownMinutes * 60 * 1000;
         var now = Date.now();
@@ -551,6 +570,7 @@ PlasmoidItem {
 
     function handleQuotaWarning(provider, percentUsed) {
         if (!plasmoid.configuration.alertsEnabled) return;
+        if (!isProviderNotificationEnabled(provider)) return;
         if (!canNotify("quota_" + provider)) return;
 
         // Record event in database
@@ -575,6 +595,7 @@ PlasmoidItem {
     function handleBudgetWarning(provider, period, spent, budget) {
         if (!plasmoid.configuration.alertsEnabled) return;
         if (!plasmoid.configuration.notifyOnBudgetWarning) return;
+        if (!isProviderNotificationEnabled(provider)) return;
         if (!canNotify("budgetwarn_" + provider + "_" + period)) return;
 
         budgetNotification.text = i18n("%1: %2 budget at %3% — $%4 / $%5",
@@ -587,6 +608,7 @@ PlasmoidItem {
     function handleBudgetExceeded(provider, period, spent, budget) {
         if (!plasmoid.configuration.alertsEnabled) return;
         if (!plasmoid.configuration.notifyOnBudgetWarning) return;
+        if (!isProviderNotificationEnabled(provider)) return;
         if (!canNotify("budget_" + provider + "_" + period)) return;
 
         budgetNotification.text = i18n("%1: %2 budget exceeded! $%3 / $%4",
@@ -597,6 +619,7 @@ PlasmoidItem {
 
     function handleProviderDisconnected(provider) {
         if (!plasmoid.configuration.notifyOnDisconnect) return;
+        if (!isProviderNotificationEnabled(provider)) return;
         if (!canNotify("disconnect_" + provider)) return;
 
         connectionNotification.eventId = "providerDisconnected";
@@ -608,6 +631,7 @@ PlasmoidItem {
 
     function handleProviderReconnected(provider) {
         if (!plasmoid.configuration.notifyOnReconnect) return;
+        if (!isProviderNotificationEnabled(provider)) return;
         if (!canNotify("reconnect_" + provider)) return;
 
         connectionNotification.eventId = "providerReconnected";

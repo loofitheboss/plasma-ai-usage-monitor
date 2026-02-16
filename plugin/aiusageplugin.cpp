@@ -1,4 +1,5 @@
 #include "aiusageplugin.h"
+#include "appinfo.h"
 #include "secretsmanager.h"
 #include "providerbackend.h"
 #include "openaiprovider.h"
@@ -18,10 +19,16 @@
 #include "browsercookieextractor.h"
 
 #include <QQmlEngine>
+#include <QJSEngine>
 
 void AiUsagePlugin::registerTypes(const char *uri)
 {
     Q_ASSERT(QLatin1String(uri) == QLatin1String("com.github.loofi.aiusagemonitor"));
+
+    qmlRegisterSingletonType<AppInfo>(uri, 1, 0, "AppInfo",
+        [](QQmlEngine *, QJSEngine *) -> QObject * {
+            return new AppInfo();
+        });
 
     // Register C++ types for use in QML
     qmlRegisterType<SecretsManager>(uri, 1, 0, "SecretsManager");

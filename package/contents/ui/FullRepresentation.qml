@@ -13,6 +13,19 @@ PlasmaExtras.Representation {
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: Kirigami.Units.gridUnit * 28
 
+    property var detailSnapshots: []
+    property var detailSummaryData: ({})
+    property var detailDailyCosts: []
+    property string detailProviderLabel: ""
+
+    property var compareSeriesData: []
+    property date lastQueryFrom: new Date(0)
+    property date lastQueryTo: new Date(0)
+    property bool historyLoading: false
+    readonly property bool narrowPopup: width < Kirigami.Units.gridUnit * 22
+
+    readonly property bool compareMode: historyModeCombo.currentValue === "compare"
+
     header: PlasmaExtras.PlasmoidHeading {
         RowLayout {
             anchors.fill: parent
@@ -48,7 +61,6 @@ PlasmaExtras.Representation {
         anchors.fill: parent
         spacing: 0
 
-        // No providers configured message
         PlasmaExtras.PlaceholderMessage {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -64,7 +76,6 @@ PlasmaExtras.Representation {
             }
         }
 
-        // Provider status summary bar
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: Kirigami.Units.smallSpacing
@@ -106,7 +117,6 @@ PlasmaExtras.Representation {
             }
         }
 
-        // Tab bar for Live / History views
         QQC2.TabBar {
             id: tabBar
             Layout.fillWidth: true
@@ -122,14 +132,12 @@ PlasmaExtras.Representation {
             }
         }
 
-        // Tab content
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: hasAnyProvider()
             currentIndex: tabBar.currentIndex
 
-            // ── Live Tab ──
             PlasmaComponents.ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -143,7 +151,6 @@ PlasmaExtras.Representation {
                         width: parent.width
                         spacing: Kirigami.Units.mediumSpacing
 
-                        // Cost summary card (shows total cost across all providers)
                         CostSummaryCard {
                             Layout.fillWidth: true
                             Layout.margins: Kirigami.Units.smallSpacing
@@ -151,7 +158,6 @@ PlasmaExtras.Representation {
                             providers: root.allProviders ?? []
                         }
 
-                        // Provider cards (data-driven)
                         Repeater {
                             model: root.allProviders ?? []
 
@@ -167,7 +173,6 @@ PlasmaExtras.Representation {
                             }
                         }
 
-                        // ── Subscription Tools Section ──
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.leftMargin: Kirigami.Units.smallSpacing
@@ -217,59 +222,318 @@ PlasmaExtras.Representation {
                 }
             }
 
-            // ── History Tab ──
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: Kirigami.Units.smallSpacing
 
-                // Time range selector
-                RowLayout {
+                Flickable {
+                    id: historyControlsFlick
                     Layout.fillWidth: true
-                    Layout.margins: Kirigami.Units.smallSpacing
-                    spacing: Kirigami.Units.smallSpacing
+                    Layout.preferredHeight: historyControlsRow.implicitHeight + Kirigami.Units.smallSpacing * 2
+                    Layout.leftMargin: Kirigami.Units.smallSpacing
+                    Layout.rightMargin: Kirigami.Units.smallSpacing
+                    clip: true
+                    contentWidth: historyControlsRow.implicitWidth + Kirigami.Units.smallSpacing * 2
+                    contentHeight: height
+                    interactive: contentWidth > width
+                    boundsBehavior: Flickable.StopAtBounds
 
-                    PlasmaComponents.Label {
-                        text: i18n("Range:")
-                        font.pointSize: Kirigami.Theme.smallFont.pointSize
-                        opacity: 0.7
+                    RowLayout {
+                        id: historyControlsRow
+                        x: Kirigami.Units.smallSpacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Kirigami.Units.smallSpacing
+
+                        PlasmaComponents.Label {
+                            text: i18n("View:")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.7
+                        }
+
+                        QQC2.ComboBox {
+                            id: historyModeCombo
+                            model: [
+                                { text: i18n("Detail"), value: "detail" },
+                                { text: i18n("Compare"), value: "compare" }
+                            ]
+                            textRole: "text"
+                            valueRole: "value"
+                            currentIndex: 0
+                            Layout.preferredWidth: fullRoot.narrowPopup ? Kirigami.Units.gridUnit * 6 : implicitWidth
+                            onCurrentIndexChanged: {
+                                refreshHistory();
+                            }
+                        }
+
+                        PlasmaComponents.Label {
+                            text: i18n("Source:")
+                            visible: fullRoot.compareMode
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.7
+                        }
+
+                        QQC2.ComboBox {
+                            id: compareSourceCombo
+                            visible: fullRoot.compareMode
+                            model: [
+                                { text: i18n("Providers"), value: "providers" },
+                                { text: i18n("Subscription Tools"), value: "tools" }
+                            ]
+                            textRole: "text"
+                            valueRole: "value"
+                            currentIndex: 0
+                            Layout.preferredWidth: fullRoot.narrowPopup ? Kirigami.Units.gridUnit * 8 : implicitWidth
+                            onCurrentIndexChanged: {
+                                resetCompareMetric();
+                                refreshHistory();
+                            }
+                        }
+
+                        QQC2.ComboBox {
+                            id: historyProviderCombo
+                            visible: !fullRoot.compareMode
+                            model: getEnabledProviderEntries()
+                            textRole: "label"
+                            valueRole: "dbName"
+                            Layout.preferredWidth: fullRoot.narrowPopup ? Kirigami.Units.gridUnit * 9 : Kirigami.Units.gridUnit * 11
+                            onCurrentIndexChanged: {
+                                if (!fullRoot.compareMode) refreshHistory();
+                            }
+                        }
+
+                        PlasmaComponents.Label {
+                            text: i18n("Metric:")
+                            visible: fullRoot.compareMode
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.7
+                        }
+
+                        QQC2.ComboBox {
+                            id: compareMetricCombo
+                            visible: fullRoot.compareMode
+                            model: getCompareMetricOptions(compareSourceCombo.currentValue)
+                            textRole: "text"
+                            valueRole: "value"
+                            Layout.preferredWidth: fullRoot.narrowPopup ? Kirigami.Units.gridUnit * 8 : implicitWidth
+                            onCurrentIndexChanged: {
+                                if (fullRoot.compareMode) refreshHistory();
+                            }
+                        }
+
+                        PlasmaComponents.Label {
+                            text: i18n("Range:")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.7
+                        }
+
+                        QQC2.ComboBox {
+                            id: timeRangeCombo
+                            model: [i18n("24 hours"), i18n("7 days"), i18n("30 days")]
+                            currentIndex: 1
+                            Layout.preferredWidth: fullRoot.narrowPopup ? Kirigami.Units.gridUnit * 6 : implicitWidth
+                            onCurrentIndexChanged: refreshHistory()
+                        }
+
+                        PlasmaComponents.ToolButton {
+                            icon.name: "view-refresh"
+                            enabled: canRefreshHistory() && !fullRoot.historyLoading
+                            onClicked: refreshHistory()
+                            PlasmaComponents.ToolTip { text: i18n("Refresh history") }
+                        }
                     }
 
-                    QQC2.ComboBox {
-                        id: historyProviderCombo
-                        model: getEnabledProviderNames()
-                        Layout.fillWidth: true
-                    }
-
-                    QQC2.ComboBox {
-                        id: timeRangeCombo
-                        model: [i18n("24 hours"), i18n("7 days"), i18n("30 days")]
-                        currentIndex: 1
-                    }
-
-                    PlasmaComponents.ToolButton {
-                        icon.name: "view-refresh"
-                        onClicked: refreshHistory()
-                        PlasmaComponents.ToolTip { text: i18n("Refresh history") }
+                    QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
+                        policy: historyControlsFlick.contentWidth > historyControlsFlick.width
+                            ? QQC2.ScrollBar.AsNeeded
+                            : QQC2.ScrollBar.AlwaysOff
                     }
                 }
 
-                // Usage chart
-                UsageChart {
-                    id: historyChart
+                Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 10
-                    Layout.margins: Kirigami.Units.smallSpacing
+                    Layout.fillHeight: true
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: Kirigami.Units.smallSpacing
+                        visible: !fullRoot.compareMode
+
+                        UsageChart {
+                            id: historyChart
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Kirigami.Units.gridUnit * 10
+                            Layout.margins: Kirigami.Units.smallSpacing
+                            chartData: fullRoot.detailSnapshots
+                        }
+
+                        TrendSummary {
+                            id: trendSummary
+                            Layout.fillWidth: true
+                            Layout.margins: Kirigami.Units.smallSpacing
+                            summaryData: fullRoot.detailSummaryData
+                            dailyCosts: fullRoot.detailDailyCosts
+                            provider: fullRoot.detailProviderLabel
+                        }
+                    }
+
+                    PlasmaExtras.PlaceholderMessage {
+                        anchors.centerIn: parent
+                        width: parent.width - Kirigami.Units.largeSpacing * 2
+                        visible: !fullRoot.compareMode
+                                 && !fullRoot.historyLoading
+                                 && selectedDetailProviderDbName() === ""
+                        iconName: "office-chart-line"
+                        text: i18n("Select a provider")
+                        explanation: i18n("Choose a provider to view historical trends")
+                    }
+
+                    PlasmaExtras.PlaceholderMessage {
+                        anchors.centerIn: parent
+                        width: parent.width - Kirigami.Units.largeSpacing * 2
+                        visible: !fullRoot.compareMode
+                                 && !fullRoot.historyLoading
+                                 && selectedDetailProviderDbName() !== ""
+                                 && fullRoot.detailSnapshots.length === 0
+                        iconName: "view-calendar-timeline"
+                        text: i18n("No historical data")
+                        explanation: i18n("No snapshots were found for this provider and time range")
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: Kirigami.Units.smallSpacing
+                        visible: fullRoot.compareMode
+
+                        MultiSeriesChart {
+                            id: compareChart
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Kirigami.Units.gridUnit * 11
+                            Layout.margins: Kirigami.Units.smallSpacing
+                            metric: currentCompareMetric()
+                            seriesData: fullRoot.compareSeriesData
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.margins: Kirigami.Units.smallSpacing
+                            Layout.preferredHeight: rankingColumn.implicitHeight + Kirigami.Units.smallSpacing * 2
+                            radius: Kirigami.Units.cornerRadius
+                            color: Qt.alpha(Kirigami.Theme.highlightColor, 0.06)
+                            border.width: 1
+                            border.color: Qt.alpha(Kirigami.Theme.highlightColor, 0.2)
+                            visible: hasCompareData()
+
+                            ColumnLayout {
+                                id: rankingColumn
+                                anchors {
+                                    fill: parent
+                                    margins: Kirigami.Units.smallSpacing
+                                }
+                                spacing: Kirigami.Units.smallSpacing
+
+                                PlasmaComponents.Label {
+                                    text: i18n("Top Contributors")
+                                    font.bold: true
+                                }
+
+                                Repeater {
+                                    model: compareRanking()
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: Kirigami.Units.smallSpacing
+
+                                        PlasmaComponents.Label {
+                                            text: (index + 1) + "."
+                                            opacity: 0.6
+                                        }
+
+                                        Rectangle {
+                                            width: 8
+                                            height: 8
+                                            radius: 4
+                                            color: modelData.color
+                                        }
+
+                                        PlasmaComponents.Label {
+                                            text: modelData.name
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+
+                                        PlasmaComponents.Label {
+                                            text: formatCompareValue(modelData.latestValue)
+                                            font.bold: true
+                                        }
+
+                                        PlasmaComponents.Label {
+                                            text: modelData.deltaPercent > 0
+                                                ? i18n("↑ %1%", Math.abs(modelData.deltaPercent).toFixed(1))
+                                                : (modelData.deltaPercent < 0
+                                                   ? i18n("↓ %1%", Math.abs(modelData.deltaPercent).toFixed(1))
+                                                   : i18n("→ 0%"))
+                                            color: modelData.deltaPercent > 0
+                                                ? Kirigami.Theme.negativeTextColor
+                                                : (modelData.deltaPercent < 0
+                                                   ? Kirigami.Theme.positiveTextColor
+                                                   : Kirigami.Theme.disabledTextColor)
+                                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    PlasmaExtras.PlaceholderMessage {
+                        anchors.centerIn: parent
+                        width: parent.width - Kirigami.Units.largeSpacing * 2
+                        visible: fullRoot.compareMode
+                                 && !fullRoot.historyLoading
+                                 && canRefreshHistory()
+                                 && !hasCompareData()
+                        iconName: "office-chart-line"
+                        text: i18n("No comparison data")
+                        explanation: i18n("No data was found for the selected source, metric, and range")
+                    }
+
+                    PlasmaExtras.PlaceholderMessage {
+                        anchors.centerIn: parent
+                        width: parent.width - Kirigami.Units.largeSpacing * 2
+                        visible: fullRoot.compareMode
+                                 && !fullRoot.historyLoading
+                                 && !canRefreshHistory()
+                        iconName: "dialog-information"
+                        text: i18n("No sources available")
+                        explanation: i18n("Enable at least one provider or subscription tool to compare trends")
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: fullRoot.historyLoading
+                        color: Qt.alpha(Kirigami.Theme.backgroundColor, 0.82)
+                        z: 30
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: Kirigami.Units.smallSpacing
+
+                            QQC2.BusyIndicator {
+                                running: fullRoot.historyLoading
+                                visible: fullRoot.historyLoading
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+
+                            PlasmaComponents.Label {
+                                text: i18n("Loading history...")
+                                opacity: 0.75
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                    }
                 }
 
-                // Trend summary
-                TrendSummary {
-                    id: trendSummary
-                    Layout.fillWidth: true
-                    Layout.margins: Kirigami.Units.smallSpacing
-                }
-
-                // Export buttons
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.margins: Kirigami.Units.smallSpacing
@@ -280,23 +544,22 @@ PlasmaExtras.Representation {
                     PlasmaComponents.ToolButton {
                         icon.name: "document-export"
                         text: i18n("CSV")
+                        enabled: canExportCurrentView()
                         onClicked: exportData("csv")
-                        PlasmaComponents.ToolTip { text: i18n("Export as CSV") }
+                        PlasmaComponents.ToolTip { text: i18n("Export current view as CSV") }
                     }
 
                     PlasmaComponents.ToolButton {
                         icon.name: "document-export"
                         text: i18n("JSON")
+                        enabled: canExportCurrentView()
                         onClicked: exportData("json")
-                        PlasmaComponents.ToolTip { text: i18n("Export as JSON") }
+                        PlasmaComponents.ToolTip { text: i18n("Export current view as JSON") }
                     }
                 }
-
-                Item { Layout.fillHeight: true }
             }
         }
 
-        // Footer with last refresh time
         PlasmaComponents.Label {
             Layout.fillWidth: true
             Layout.bottomMargin: Kirigami.Units.smallSpacing
@@ -313,8 +576,6 @@ PlasmaExtras.Representation {
             }
         }
     }
-
-    // ── Functions ──
 
     function hasAnyProvider() {
         return plasmoid.configuration.openaiEnabled
@@ -338,67 +599,321 @@ PlasmaExtras.Representation {
         return false;
     }
 
-    function getEnabledProviderNames() {
+    function getEnabledProviderEntries() {
+        var entries = [];
+        var providers = root.allProviders ?? [];
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i].enabled) {
+                entries.push({ label: providers[i].name, dbName: providers[i].dbName });
+            }
+        }
+        if (entries.length === 0) {
+            entries.push({ label: i18n("No providers"), dbName: "" });
+        }
+        return entries;
+    }
+
+    function getEnabledProviderDbNames() {
         var names = [];
         var providers = root.allProviders ?? [];
         for (var i = 0; i < providers.length; i++) {
-            if (providers[i].enabled) names.push(providers[i].name);
+            if (providers[i].enabled) {
+                names.push(providers[i].dbName);
+            }
         }
-        return names.length > 0 ? names : [i18n("No providers")];
+        return names;
+    }
+
+    function getEnabledToolNames() {
+        var names = [];
+        var tools = root.allSubscriptionTools ?? [];
+        for (var i = 0; i < tools.length; i++) {
+            if (tools[i].enabled) {
+                names.push(tools[i].name);
+            }
+        }
+        return names;
+    }
+
+    function selectedDetailProviderDbName() {
+        return historyProviderCombo.currentValue || "";
+    }
+
+    function currentCompareMetric() {
+        return compareMetricCombo.currentValue || (compareSourceCombo.currentValue === "tools" ? "percentUsed" : "cost");
+    }
+
+    function getCompareMetricOptions(source) {
+        if (source === "tools") {
+            return [
+                { text: i18n("Percent Used"), value: "percentUsed" },
+                { text: i18n("Usage Count"), value: "usageCount" },
+                { text: i18n("Remaining"), value: "remaining" }
+            ];
+        }
+        return [
+            { text: i18n("Cost"), value: "cost" },
+            { text: i18n("Tokens"), value: "tokens" },
+            { text: i18n("Requests"), value: "requests" },
+            { text: i18n("Rate Limit Used"), value: "rateLimitUsed" }
+        ];
+    }
+
+    function resetCompareMetric() {
+        if (compareMetricCombo.count > 0) {
+            compareMetricCombo.currentIndex = 0;
+        }
     }
 
     function getTimeRange() {
         var now = new Date();
         switch (timeRangeCombo.currentIndex) {
-            case 0: return new Date(now.getTime() - 24 * 60 * 60 * 1000);     // 24h
-            case 1: return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7d
-            case 2: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30d
+            case 0: return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            case 1: return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            case 2: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
             default: return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         }
     }
 
+    function compareBucketMinutes() {
+        switch (timeRangeCombo.currentIndex) {
+            case 0: return 15;
+            case 1: return 60;
+            case 2: return 180;
+            default: return 60;
+        }
+    }
+
+    function canRefreshHistory() {
+        if (fullRoot.compareMode) {
+            if (compareSourceCombo.currentValue === "tools") {
+                return getEnabledToolNames().length > 0;
+            }
+            return getEnabledProviderDbNames().length > 0;
+        }
+        return selectedDetailProviderDbName() !== "";
+    }
+
     function refreshHistory() {
         if (!root.usageDb) return;
-        var provider = historyProviderCombo.currentText;
-        if (!provider || provider === i18n("No providers")) return;
+        if (!timeRangeCombo) return;
+        if (fullRoot.compareMode && (!compareSourceCombo || !compareMetricCombo)) return;
+        if (!fullRoot.compareMode && !historyProviderCombo) return;
+        fullRoot.historyLoading = true;
+        try {
+            var from = getTimeRange();
+            var to = new Date();
+            fullRoot.lastQueryFrom = from;
+            fullRoot.lastQueryTo = to;
 
-        var from = getTimeRange();
-        var to = new Date();
+            if (fullRoot.compareMode) {
+                var source = compareSourceCombo.currentValue || "providers";
+                var metric = currentCompareMetric();
+                var names = source === "tools" ? getEnabledToolNames() : getEnabledProviderDbNames();
 
-        var snapshots = root.usageDb.getSnapshots(provider, from, to);
-        var summary = root.usageDb.getSummary(provider, from, to);
-        var dailyCosts = root.usageDb.getDailyCosts(provider, from, to);
+                if (names.length === 0) {
+                    fullRoot.compareSeriesData = [];
+                    return;
+                }
 
-        historyChart.chartData = snapshots;
-        historyChart.provider = provider;
-        trendSummary.summaryData = summary;
-        trendSummary.dailyCosts = dailyCosts;
-        trendSummary.provider = provider;
+                var bucketMinutes = compareBucketMinutes();
+                var rawSeries;
+                if (source === "tools") {
+                    rawSeries = root.usageDb.getToolSeries(names, from, to, metric, bucketMinutes);
+                } else {
+                    rawSeries = root.usageDb.getProviderSeries(names, from, to, metric, bucketMinutes);
+                }
+                fullRoot.compareSeriesData = decorateCompareSeries(rawSeries, source);
+                return;
+            }
+
+            var providerDbName = selectedDetailProviderDbName();
+            if (providerDbName === "") {
+                fullRoot.detailSnapshots = [];
+                fullRoot.detailSummaryData = ({})
+                fullRoot.detailDailyCosts = [];
+                return;
+            }
+
+            fullRoot.detailProviderLabel = historyProviderCombo.currentText;
+            fullRoot.detailSnapshots = root.usageDb.getSnapshots(providerDbName, from, to);
+            fullRoot.detailSummaryData = root.usageDb.getSummary(providerDbName, from, to);
+            fullRoot.detailDailyCosts = root.usageDb.getDailyCosts(providerDbName, from, to);
+        } finally {
+            fullRoot.historyLoading = false;
+        }
+    }
+
+    function providerDisplayName(dbName) {
+        var providers = root.allProviders ?? [];
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i].dbName === dbName) {
+                return providers[i].name;
+            }
+        }
+        return dbName;
+    }
+
+    function providerColor(dbName) {
+        var providers = root.allProviders ?? [];
+        for (var i = 0; i < providers.length; i++) {
+            if (providers[i].dbName === dbName) {
+                return providers[i].color;
+            }
+        }
+        return "#10A37F";
+    }
+
+    function toolColor(name) {
+        var tools = root.allSubscriptionTools ?? [];
+        for (var i = 0; i < tools.length; i++) {
+            if (tools[i].name === name) {
+                return tools[i].monitor?.toolColor || Kirigami.Theme.highlightColor;
+            }
+        }
+        return Kirigami.Theme.highlightColor;
+    }
+
+    function decorateCompareSeries(rawSeries, source) {
+        var out = [];
+        var raw = rawSeries || [];
+        for (var i = 0; i < raw.length; i++) {
+            var series = raw[i] || {};
+            var rawName = series.name || "";
+            var displayName = source === "tools" ? rawName : providerDisplayName(rawName);
+            var color = source === "tools" ? toolColor(rawName) : providerColor(rawName);
+
+            out.push({
+                rawName: rawName,
+                name: displayName,
+                color: color,
+                points: series.points || [],
+                latestValue: series.latestValue || 0,
+                deltaPercent: series.deltaPercent || 0,
+                sampleCount: series.sampleCount || 0
+            });
+        }
+        return out;
+    }
+
+    function hasCompareData() {
+        var series = fullRoot.compareSeriesData || [];
+        for (var i = 0; i < series.length; i++) {
+            if ((series[i].points || []).length > 0) return true;
+        }
+        return false;
+    }
+
+    function compareRanking() {
+        var ranked = [];
+        var series = fullRoot.compareSeriesData || [];
+        for (var i = 0; i < series.length; i++) {
+            if ((series[i].points || []).length === 0) continue;
+            ranked.push({
+                name: series[i].name,
+                latestValue: series[i].latestValue || 0,
+                deltaPercent: series[i].deltaPercent || 0,
+                sampleCount: series[i].sampleCount || 0,
+                color: series[i].color
+            });
+        }
+
+        ranked.sort(function(a, b) {
+            return b.latestValue - a.latestValue;
+        });
+        return ranked;
+    }
+
+    function formatCompareValue(value) {
+        var metric = currentCompareMetric();
+        if (metric === "cost") return "$" + value.toFixed(value < 1 ? 4 : 2);
+        if (metric === "percentUsed" || metric === "rateLimitUsed") return Math.round(value) + "%";
+        if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
+        if (value >= 1000) return (value / 1000).toFixed(1) + "K";
+        return Math.round(value).toString();
+    }
+
+    function canExportCurrentView() {
+        if (fullRoot.historyLoading) return false;
+        if (fullRoot.compareMode) {
+            return hasCompareData();
+        }
+        return selectedDetailProviderDbName() !== "" && fullRoot.detailSnapshots.length > 0;
+    }
+
+    function exportCompareCsv(source, metric, series) {
+        var lines = ["source,metric,name,timestamp,value,latest_value,delta_percent,sample_count"];
+        for (var i = 0; i < series.length; i++) {
+            var s = series[i];
+            var points = s.points || [];
+            for (var p = 0; p < points.length; p++) {
+                lines.push([
+                    source,
+                    metric,
+                    csvEscape(s.name),
+                    csvEscape(points[p].timestamp || ""),
+                    (points[p].value || 0).toString(),
+                    (s.latestValue || 0).toString(),
+                    (s.deltaPercent || 0).toString(),
+                    (s.sampleCount || 0).toString()
+                ].join(","));
+            }
+        }
+        return lines.join("\n") + "\n";
+    }
+
+    function csvEscape(value) {
+        var str = String(value || "");
+        if (str.indexOf(",") >= 0 || str.indexOf("\"") >= 0 || str.indexOf("\n") >= 0) {
+            return "\"" + str.replace(/\"/g, "\"\"") + "\"";
+        }
+        return str;
     }
 
     function exportData(format) {
         if (!root.usageDb) return;
-        var provider = historyProviderCombo.currentText;
-        if (!provider || provider === i18n("No providers")) return;
 
-        var from = getTimeRange();
-        var to = new Date();
+        var data = "";
 
-        var data;
-        if (format === "csv") {
-            data = root.usageDb.exportCsv(provider, from, to);
+        if (fullRoot.compareMode) {
+            var source = compareSourceCombo.currentValue || "providers";
+            var metric = currentCompareMetric();
+            var series = fullRoot.compareSeriesData || [];
+
+            if (format === "csv") {
+                data = exportCompareCsv(source, metric, series);
+            } else {
+                data = JSON.stringify({
+                    mode: "compare",
+                    source: source,
+                    metric: metric,
+                    from: fullRoot.lastQueryFrom.toISOString(),
+                    to: fullRoot.lastQueryTo.toISOString(),
+                    series: series
+                }, null, 2);
+            }
         } else {
-            data = root.usageDb.exportJson(provider, from, to);
+            var providerDbName = selectedDetailProviderDbName();
+            if (providerDbName === "") return;
+
+            if (format === "csv") {
+                data = root.usageDb.exportCsv(providerDbName, fullRoot.lastQueryFrom, fullRoot.lastQueryTo);
+            } else {
+                data = root.usageDb.exportJson(providerDbName, fullRoot.lastQueryFrom, fullRoot.lastQueryTo);
+            }
         }
 
-        // Copy to clipboard
         if (data) {
             clipboard.setText(data);
         }
     }
 
-    // Clipboard helper (C++ implementation)
     ClipboardHelper {
         id: clipboard
+    }
+
+    Component.onCompleted: {
+        resetCompareMetric();
+        refreshHistory();
     }
 }

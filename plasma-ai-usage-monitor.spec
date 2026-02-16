@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        2.7.0
+Version:        2.8.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -58,6 +58,16 @@ Features:
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
 
 %changelog
+* Mon Feb 16 2026 Loofi <loofi@github.com> - 2.8.0-1
+- Add `AppInfo.version` singleton and remove hardcoded QML version drift
+- Add compare analytics mode for providers/tools with metric-aware series APIs
+- Add `MultiSeriesChart.qml` with compact legend chips and ranked hover tooltip
+- Fix History mapping to use db names for query/export (Google/Mistral/xAI labels)
+- Apply per-provider notification gating consistently across all provider alerts
+- Add explicit History loading/empty states and safer export enablement
+- Add tests for series metrics/bucketing and display-name/db-name regression
+- Add version consistency check and run ctest in CI build workflow
+
 * Mon Feb 17 2026 Loofi <loofi@github.com> - 2.7.0-1
 - Fix reply-after-deleteLater in OpenAI onCostsReply and onMonthlyCostsReply
 - Fix reads-after-deleteLater in OpenAICompatible 429 and success paths

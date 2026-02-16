@@ -108,6 +108,32 @@ public:
                                                const QDateTime &to) const;
 
     /**
+     * Query aggregated time series for one or more providers.
+     * Returns items with keys: name, points, latestValue, deltaPercent, sampleCount.
+     * Each points entry has: timestamp, value.
+     *
+     * Supported metrics: cost, tokens, requests, rateLimitUsed
+     */
+    Q_INVOKABLE QVariantList getProviderSeries(const QStringList &providers,
+                                               const QDateTime &from,
+                                               const QDateTime &to,
+                                               const QString &metric,
+                                               int bucketMinutes = 60) const;
+
+    /**
+     * Query aggregated time series for one or more subscription tools.
+     * Returns items with keys: name, points, latestValue, deltaPercent, sampleCount.
+     * Each points entry has: timestamp, value.
+     *
+     * Supported metrics: percentUsed, usageCount, remaining
+     */
+    Q_INVOKABLE QVariantList getToolSeries(const QStringList &tools,
+                                           const QDateTime &from,
+                                           const QDateTime &to,
+                                           const QString &metric,
+                                           int bucketMinutes = 60) const;
+
+    /**
      * Get all subscription tool names that have recorded data.
      */
     Q_INVOKABLE QStringList getToolNames() const;

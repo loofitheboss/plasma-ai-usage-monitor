@@ -1,5 +1,6 @@
 set(aiusagemonitor_SRCS
     aiusageplugin.cpp
+    appinfo.cpp
     secretsmanager.cpp
     providerbackend.cpp
     openaicompatibleprovider.cpp
@@ -21,6 +22,7 @@ set(aiusagemonitor_SRCS
 
 set(aiusagemonitor_HDRS
     aiusageplugin.h
+    appinfo.h
     secretsmanager.h
     providerbackend.h
     openaicompatibleprovider.h
@@ -43,6 +45,10 @@ set(aiusagemonitor_HDRS
 
 add_library(aiusagemonitorplugin SHARED ${aiusagemonitor_SRCS} ${aiusagemonitor_HDRS})
 
+target_compile_definitions(aiusagemonitorplugin
+    PRIVATE AIUSAGE_MONITOR_VERSION="${PROJECT_VERSION}"
+)
+
 target_link_libraries(aiusagemonitorplugin
     Qt6::Core
     Qt6::Qml
@@ -56,3 +62,7 @@ target_link_libraries(aiusagemonitorplugin
 
 install(TARGETS aiusagemonitorplugin DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/loofi/aiusagemonitor)
 install(FILES qmldir DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/loofi/aiusagemonitor)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

@@ -48,6 +48,15 @@ To test in a standalone window (without adding to panel):
 plasmawindowed com.github.loofi.aiusagemonitor
 ```
 
+Run automated tests before submitting:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+./scripts/check_version_consistency.sh
+```
+
 ## Project Structure
 
 - **`package/`** — The plasmoid package (QML UI, metadata, config schema). Changes here are pure QML/JS and don't require a recompile, but do require `plasmashell --replace`.
@@ -58,6 +67,7 @@ plasmawindowed com.github.loofi.aiusagemonitor
 | Class | File | Purpose |
 |-------|------|---------|
 | `SecretsManager` | `plugin/secretsmanager.{h,cpp}` | KWallet wrapper for API key storage |
+| `AppInfo` | `plugin/appinfo.{h,cpp}` | Build-version singleton exposed to QML (`AppInfo.version`) |
 | `ProviderBackend` | `plugin/providerbackend.{h,cpp}` | Abstract base for all providers (token usage, rate limits, cost, budget, errors, proxy support, per-model cost estimation) |
 | `OpenAICompatibleProvider` | `plugin/openaicompatibleprovider.{h,cpp}` | Intermediate base for OpenAI-compatible APIs (chat completions, rate limit headers, token usage parsing) |
 | `OpenAIProvider` | `plugin/openaiprovider.{h,cpp}` | OpenAI usage/costs/rate-limit integration (Admin API key required) |
@@ -82,11 +92,12 @@ plasmawindowed com.github.loofi.aiusagemonitor
 |-----------|---------|
 | `main.qml` | Root PlasmoidItem — instantiates 7 backends + 3 subscription tool monitors, per-provider timers, notifications, database, `allProviders` and `allSubscriptionTools` arrays |
 | `CompactRepresentation.qml` | Panel icon with 3 display modes (icon/cost/count) and accessibility |
-| `FullRepresentation.qml` | Popup with status bar, Live/History tabs, data-driven provider cards and subscription tool cards via Repeater, export buttons |
+| `FullRepresentation.qml` | Popup with status bar, Live/History tabs, detail and compare history modes, responsive history controls, loading/empty states, export buttons |
 | `ProviderCard.qml` | Collapsible provider stats card with budget bars, cost estimation labels, error details, and accessibility |
 | `SubscriptionToolCard.qml` | Subscription tool usage card with progress bars, time-until-reset, dual limits, manual increment/reset |
 | `CostSummaryCard.qml` | Aggregate cost breakdown across all providers with accessibility |
 | `UsageChart.qml` | Canvas line/area chart (cost/tokens/requests/rateLimit) |
+| `MultiSeriesChart.qml` | Multi-series comparison chart for provider/tool analytics with compact legend chips and ranked hover tooltip |
 | `TrendSummary.qml` | Summary stats grid for a time range |
 | `configGeneral.qml` | General settings + per-provider refresh intervals |
 | `configProviders.qml` | Provider enable/key/model/proxy settings with HTTPS security warnings |
@@ -94,6 +105,12 @@ plasmawindowed com.github.loofi.aiusagemonitor
 | `configBudget.qml` | Per-provider daily/monthly budgets |
 | `configSubscriptions.qml` | Subscription tool enable/plan/limit settings with auto-detect |
 | `configHistory.qml` | History enable/retention/prune settings |
+
+### Test Targets
+
+- `usagedatabase_series` — validates `UsageDatabase::getProviderSeries()` and `getToolSeries()` metrics/shape/bucketing behavior
+- `history_mapping_regression` — validates display-name vs db-name history query behavior
+- `version_consistency` — validates version alignment across `CMakeLists.txt`, `package/metadata.json`, and `plasma-ai-usage-monitor.spec`
 
 ## Coding Standards
 

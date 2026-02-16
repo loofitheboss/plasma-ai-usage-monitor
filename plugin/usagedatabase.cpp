@@ -8,8 +8,79 @@
 #include <QJsonObject>
 #include <QFileInfo>
 #include <QDebug>
+#include <QMap>
+#include <QTimeZone>
+#include <cmath>
 
 std::atomic<int> UsageDatabase::s_instanceCounter{0};
+
+namespace {
+constexpr int MAX_SERIES_POINTS = 240;
+
+struct BucketAggregate {
+    double sum = 0.0;
+    int count = 0;
+    QDateTime bucketStart;
+};
+
+QDateTime parseSnapshotTimestamp(const QString &raw)
+{
+    QDateTime dt = QDateTime::fromString(raw, Qt::ISODate);
+    if (!dt.isValid()) {
+        dt = QDateTime::fromString(raw, QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+    }
+    if (!dt.isValid()) {
+        return {};
+    }
+
+    if (dt.timeSpec() == Qt::UTC
+        || dt.timeSpec() == Qt::OffsetFromUTC
+        || dt.timeSpec() == Qt::TimeZone) {
+        return dt.toUTC();
+    }
+
+    return QDateTime(dt.date(), dt.time(), QTimeZone::utc());
+}
+
+QString toDbDateTimeString(const QDateTime &dt)
+{
+    return dt.toUTC().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+}
+
+int effectiveBucketSeconds(const QDateTime &fromUtc, const QDateTime &toUtc, int bucketMinutes)
+{
+    int baseBucketSecs = qBound(1, bucketMinutes, 24 * 60) * 60;
+    qint64 rangeSecs = qMax<qint64>(1, fromUtc.secsTo(toUtc));
+    int minBucketSecs = static_cast<int>(
+        std::ceil(static_cast<double>(rangeSecs) / static_cast<double>(MAX_SERIES_POINTS)));
+    return qMax(baseBucketSecs, minBucketSecs);
+}
+
+double deltaPercent(double first, double last)
+{
+    if (qFuzzyIsNull(first)) {
+        return 0.0;
+    }
+    return ((last - first) / std::abs(first)) * 100.0;
+}
+
+QVariantList bucketToPoints(const QMap<qint64, BucketAggregate> &buckets)
+{
+    QVariantList points;
+    for (auto it = buckets.constBegin(); it != buckets.constEnd(); ++it) {
+        const BucketAggregate &bucket = it.value();
+        if (bucket.count <= 0 || !bucket.bucketStart.isValid()) {
+            continue;
+        }
+
+        QVariantMap point;
+        point[QStringLiteral("timestamp")] = bucket.bucketStart.toString(Qt::ISODate);
+        point[QStringLiteral("value")] = bucket.sum / static_cast<double>(bucket.count);
+        points.append(point);
+    }
+    return points;
+}
+} // namespace
 
 UsageDatabase::UsageDatabase(QObject *parent)
     : QObject(parent)
@@ -285,8 +356,8 @@ QVariantList UsageDatabase::getSnapshots(const QString &provider,
         "ORDER BY timestamp ASC"
     ));
     query.addBindValue(provider);
-    query.addBindValue(from.toUTC().toString(Qt::ISODate));
-    query.addBindValue(to.toUTC().toString(Qt::ISODate));
+    query.addBindValue(toDbDateTimeString(from));
+    query.addBindValue(toDbDateTimeString(to));
 
     if (!query.exec()) {
         qWarning() << "UsageDatabase: getSnapshots query failed:" << query.lastError().text();
@@ -329,8 +400,8 @@ QVariantList UsageDatabase::getDailyCosts(const QString &provider,
         "GROUP BY day ORDER BY day ASC"
     ));
     query.addBindValue(provider);
-    query.addBindValue(from.toUTC().toString(Qt::ISODate));
-    query.addBindValue(to.toUTC().toString(Qt::ISODate));
+    query.addBindValue(toDbDateTimeString(from));
+    query.addBindValue(toDbDateTimeString(to));
 
     if (!query.exec()) {
         qWarning() << "UsageDatabase: getDailyCosts query failed:" << query.lastError().text();
@@ -368,8 +439,8 @@ QVariantMap UsageDatabase::getSummary(const QString &provider,
         "WHERE provider = ? AND timestamp >= ? AND timestamp <= ?"
     ));
     query.addBindValue(provider);
-    query.addBindValue(from.toUTC().toString(Qt::ISODate));
-    query.addBindValue(to.toUTC().toString(Qt::ISODate));
+    query.addBindValue(toDbDateTimeString(from));
+    query.addBindValue(toDbDateTimeString(to));
 
     if (!query.exec() || !query.next()) {
         qWarning() << "UsageDatabase: getSummary query failed:" << query.lastError().text();
@@ -423,8 +494,8 @@ QVariantList UsageDatabase::getToolSnapshots(const QString &toolName,
         "ORDER BY timestamp ASC"
     ));
     query.addBindValue(toolName);
-    query.addBindValue(from.toUTC().toString(Qt::ISODate));
-    query.addBindValue(to.toUTC().toString(Qt::ISODate));
+    query.addBindValue(toDbDateTimeString(from));
+    query.addBindValue(toDbDateTimeString(to));
 
     if (!query.exec()) {
         qWarning() << "UsageDatabase: getToolSnapshots query failed:" << query.lastError().text();
@@ -465,6 +536,215 @@ QStringList UsageDatabase::getToolNames() const
     }
 
     return names;
+}
+
+QVariantList UsageDatabase::getProviderSeries(const QStringList &providers,
+                                              const QDateTime &from,
+                                              const QDateTime &to,
+                                              const QString &metric,
+                                              int bucketMinutes) const
+{
+    QVariantList results;
+
+    if (!m_initialized || providers.isEmpty()) {
+        return results;
+    }
+
+    if (metric != QStringLiteral("cost")
+        && metric != QStringLiteral("tokens")
+        && metric != QStringLiteral("requests")
+        && metric != QStringLiteral("rateLimitUsed")) {
+        return results;
+    }
+
+    const QDateTime fromUtc = from.toUTC();
+    const QDateTime toUtc = to.toUTC();
+    if (!fromUtc.isValid() || !toUtc.isValid() || fromUtc >= toUtc) {
+        return results;
+    }
+
+    const int bucketSecs = effectiveBucketSeconds(fromUtc, toUtc, bucketMinutes);
+
+    for (const QString &provider : providers) {
+        if (provider.isEmpty()) {
+            continue;
+        }
+
+        QSqlQuery query(m_db);
+        query.prepare(QStringLiteral(
+            "SELECT timestamp, cost, input_tokens, output_tokens, request_count, "
+            "rl_requests, rl_requests_remaining "
+            "FROM usage_snapshots "
+            "WHERE provider = ? AND timestamp >= ? AND timestamp <= ? "
+            "ORDER BY timestamp ASC"
+        ));
+        query.addBindValue(provider);
+        query.addBindValue(toDbDateTimeString(fromUtc));
+        query.addBindValue(toDbDateTimeString(toUtc));
+
+        if (!query.exec()) {
+            qWarning() << "UsageDatabase: getProviderSeries query failed for" << provider
+                       << ":" << query.lastError().text();
+            continue;
+        }
+
+        QMap<qint64, BucketAggregate> buckets;
+        int sampleCount = 0;
+
+        while (query.next()) {
+            const QDateTime ts = parseSnapshotTimestamp(query.value(0).toString());
+            if (!ts.isValid() || ts < fromUtc || ts > toUtc) {
+                continue;
+            }
+
+            double value = 0.0;
+            if (metric == QStringLiteral("cost")) {
+                value = query.value(1).toDouble();
+            } else if (metric == QStringLiteral("tokens")) {
+                value = static_cast<double>(query.value(2).toLongLong() + query.value(3).toLongLong());
+            } else if (metric == QStringLiteral("requests")) {
+                value = static_cast<double>(query.value(4).toInt());
+            } else if (metric == QStringLiteral("rateLimitUsed")) {
+                const int limit = query.value(5).toInt();
+                const int remaining = query.value(6).toInt();
+                if (limit > 0) {
+                    value = (static_cast<double>(limit - remaining) / static_cast<double>(limit)) * 100.0;
+                }
+            }
+
+            const qint64 bucketIndex = fromUtc.secsTo(ts) / bucketSecs;
+            BucketAggregate &bucket = buckets[bucketIndex];
+            if (!bucket.bucketStart.isValid()) {
+                bucket.bucketStart = fromUtc.addSecs(bucketIndex * bucketSecs);
+            }
+            bucket.sum += value;
+            bucket.count++;
+            sampleCount++;
+        }
+
+        const QVariantList points = bucketToPoints(buckets);
+        QVariantMap series;
+        series[QStringLiteral("name")] = provider;
+        series[QStringLiteral("points")] = points;
+        series[QStringLiteral("sampleCount")] = sampleCount;
+
+        double latestValue = 0.0;
+        double change = 0.0;
+        if (!points.isEmpty()) {
+            const double first = points.first().toMap().value(QStringLiteral("value")).toDouble();
+            latestValue = points.last().toMap().value(QStringLiteral("value")).toDouble();
+            change = deltaPercent(first, latestValue);
+        }
+
+        series[QStringLiteral("latestValue")] = latestValue;
+        series[QStringLiteral("deltaPercent")] = change;
+        results.append(series);
+    }
+
+    return results;
+}
+
+QVariantList UsageDatabase::getToolSeries(const QStringList &tools,
+                                          const QDateTime &from,
+                                          const QDateTime &to,
+                                          const QString &metric,
+                                          int bucketMinutes) const
+{
+    QVariantList results;
+
+    if (!m_initialized || tools.isEmpty()) {
+        return results;
+    }
+
+    if (metric != QStringLiteral("percentUsed")
+        && metric != QStringLiteral("usageCount")
+        && metric != QStringLiteral("remaining")) {
+        return results;
+    }
+
+    const QDateTime fromUtc = from.toUTC();
+    const QDateTime toUtc = to.toUTC();
+    if (!fromUtc.isValid() || !toUtc.isValid() || fromUtc >= toUtc) {
+        return results;
+    }
+
+    const int bucketSecs = effectiveBucketSeconds(fromUtc, toUtc, bucketMinutes);
+
+    for (const QString &tool : tools) {
+        if (tool.isEmpty()) {
+            continue;
+        }
+
+        QSqlQuery query(m_db);
+        query.prepare(QStringLiteral(
+            "SELECT timestamp, usage_count, usage_limit "
+            "FROM subscription_tool_usage "
+            "WHERE tool_name = ? AND timestamp >= ? AND timestamp <= ? "
+            "ORDER BY timestamp ASC"
+        ));
+        query.addBindValue(tool);
+        query.addBindValue(toDbDateTimeString(fromUtc));
+        query.addBindValue(toDbDateTimeString(toUtc));
+
+        if (!query.exec()) {
+            qWarning() << "UsageDatabase: getToolSeries query failed for" << tool
+                       << ":" << query.lastError().text();
+            continue;
+        }
+
+        QMap<qint64, BucketAggregate> buckets;
+        int sampleCount = 0;
+
+        while (query.next()) {
+            const QDateTime ts = parseSnapshotTimestamp(query.value(0).toString());
+            if (!ts.isValid() || ts < fromUtc || ts > toUtc) {
+                continue;
+            }
+
+            const int usageCount = query.value(1).toInt();
+            const int usageLimit = query.value(2).toInt();
+
+            double value = 0.0;
+            if (metric == QStringLiteral("usageCount")) {
+                value = static_cast<double>(usageCount);
+            } else if (metric == QStringLiteral("remaining")) {
+                value = static_cast<double>(qMax(0, usageLimit - usageCount));
+            } else if (metric == QStringLiteral("percentUsed")) {
+                if (usageLimit > 0) {
+                    value = (static_cast<double>(usageCount) / static_cast<double>(usageLimit)) * 100.0;
+                }
+            }
+
+            const qint64 bucketIndex = fromUtc.secsTo(ts) / bucketSecs;
+            BucketAggregate &bucket = buckets[bucketIndex];
+            if (!bucket.bucketStart.isValid()) {
+                bucket.bucketStart = fromUtc.addSecs(bucketIndex * bucketSecs);
+            }
+            bucket.sum += value;
+            bucket.count++;
+            sampleCount++;
+        }
+
+        const QVariantList points = bucketToPoints(buckets);
+        QVariantMap series;
+        series[QStringLiteral("name")] = tool;
+        series[QStringLiteral("points")] = points;
+        series[QStringLiteral("sampleCount")] = sampleCount;
+
+        double latestValue = 0.0;
+        double change = 0.0;
+        if (!points.isEmpty()) {
+            const double first = points.first().toMap().value(QStringLiteral("value")).toDouble();
+            latestValue = points.last().toMap().value(QStringLiteral("value")).toDouble();
+            change = deltaPercent(first, latestValue);
+        }
+
+        series[QStringLiteral("latestValue")] = latestValue;
+        series[QStringLiteral("deltaPercent")] = change;
+        results.append(series);
+    }
+
+    return results;
 }
 
 QString UsageDatabase::exportCsv(const QString &provider,
@@ -533,7 +813,7 @@ void UsageDatabase::pruneOldData()
         return;
 
     QDateTime cutoff = QDateTime::currentDateTimeUtc().addDays(-m_retentionDays);
-    QString cutoffStr = cutoff.toString(Qt::ISODate);
+    QString cutoffStr = toDbDateTimeString(cutoff);
 
     // Wrap all deletes in a single transaction for atomicity and performance
     m_db.transaction();

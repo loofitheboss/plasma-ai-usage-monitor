@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(plasma-ai-usage-monitor VERSION 2.7.0)
+project(plasma-ai-usage-monitor VERSION 2.8.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +19,11 @@ find_package(Plasma REQUIRED)
 find_package(KF6Wallet REQUIRED)
 find_package(KF6Notifications REQUIRED)
 find_package(KF6I18n REQUIRED)
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+endif()
 
 # Install the plasmoid package
 plasma_install_package(package com.github.loofi.aiusagemonitor)
