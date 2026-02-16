@@ -33,3 +33,4 @@ target_link_libraries(test_history_mapping_regression
 add_test(NAME history_mapping_regression COMMAND test_history_mapping_regression)
 
 add_test(NAME version_consistency COMMAND ${CMAKE_SOURCE_DIR}/scripts/check_version_consistency.sh)
+add_test(NAME no_hardcoded_versions COMMAND ${CMAKE_SOURCE_DIR}/scripts/check_no_hardcoded_versions.sh)
