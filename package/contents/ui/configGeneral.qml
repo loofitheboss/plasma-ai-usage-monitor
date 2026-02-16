@@ -34,6 +34,9 @@ KCM.SimpleKCM {
                 to: 1800
                 stepSize: 60
                 value: plasmoid.configuration.refreshInterval
+                QQC2.ToolTip.text: i18n("How often to poll provider APIs for updated data (60s–30min)")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
 
             QQC2.Label {
@@ -56,6 +59,9 @@ KCM.SimpleKCM {
                 i18n("Total cost"),
                 i18n("Active providers count")
             ]
+            QQC2.ToolTip.text: i18n("Choose what to display next to the icon in the system panel")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
             currentIndex: {
                 switch (generalPage.cfg_compactDisplayMode) {
                     case "cost": return 1;

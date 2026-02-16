@@ -65,9 +65,9 @@ PlasmaExtras.Representation {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: !hasAnyProvider()
-            iconName: "network-disconnect"
-            text: i18n("No providers configured")
-            explanation: i18n("Open settings to add your API keys")
+            iconName: "preferences-desktop-notification"
+            text: i18n("Welcome to AI Usage Monitor")
+            explanation: i18n("Track your AI API usage, costs, and rate limits across multiple providers.\nOpen settings to add your first API key and get started.")
 
             helpfulAction: QQC2.Action {
                 icon.name: "configure"

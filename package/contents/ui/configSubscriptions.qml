@@ -35,6 +35,30 @@ KCM.SimpleKCM {
     // Track key dirtiness for Copilot PAT
     property bool copilotTokenDirty: false
 
+    function normalizedSyncCode(code) {
+        if (code === "not_found") return "cookies_not_found";
+        if (code === "expired") return "session_missing_or_expired";
+        return code;
+    }
+
+    function syncStatusColor(code) {
+        var normalized = normalizedSyncCode(code);
+        if (normalized === "connected") return Kirigami.Theme.positiveTextColor;
+        if (normalized === "session_missing_or_expired") return Kirigami.Theme.neutralTextColor;
+        return Kirigami.Theme.negativeTextColor;
+    }
+
+    function syncGuidance(code, serviceLabel) {
+        var normalized = normalizedSyncCode(code);
+        if (normalized === "connected") return i18n("%1 session looks valid in Firefox.", serviceLabel);
+        if (normalized === "profile_missing") return i18n("Install Firefox or choose Firefox for Browser Sync.");
+        if (normalized === "cookie_db_missing") return i18n("Close Firefox once, then retry so cookies.sqlite is accessible.");
+        if (normalized === "cookies_not_found") return i18n("Open %1 in Firefox and sign in at least once.", serviceLabel);
+        if (normalized === "session_missing_or_expired") return i18n("Log in to %1 again in Firefox, then retry.", serviceLabel);
+        if (normalized === "unsupported_browser") return i18n("Only Firefox is supported currently.");
+        return i18n("Check your browser session and retry.");
+    }
+
     // ── Temporary monitors for detection ──
     ClaudeCodeMonitor {
         id: claudeDetector
@@ -555,15 +579,12 @@ KCM.SimpleKCM {
                 text: i18n("Test Claude.ai")
                 icon.name: "network-connect"
                 onClicked: {
-                    var result = syncDetector.testConnection("claude");
-                    claudeTestLabel.text = result === "connected" ? i18n("Connected")
-                                         : result === "expired" ? i18n("Session expired")
-                                         : result === "not_found" ? i18n("No cookies found")
-                                         : result;
-                    claudeTestLabel.color = result === "connected" ? Kirigami.Theme.positiveTextColor
-                                          : result === "expired" ? Kirigami.Theme.neutralTextColor
-                                          : Kirigami.Theme.negativeTextColor;
+                    var result = subscriptionsPage.normalizedSyncCode(syncDetector.testConnection("claude"));
+                    claudeTestLabel.text = syncDetector.connectionMessage("claude", result);
+                    claudeTestLabel.color = subscriptionsPage.syncStatusColor(result);
                     claudeTestLabel.visible = true;
+                    claudeGuidanceLabel.text = subscriptionsPage.syncGuidance(result, "claude.ai");
+                    claudeGuidanceLabel.visible = true;
                 }
             }
             QQC2.Label {
@@ -577,6 +598,21 @@ KCM.SimpleKCM {
 
         RowLayout {
             Kirigami.FormData.label: " "
+            visible: browserSyncSwitch.checked && claudeGuidanceLabel.visible
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                id: claudeGuidanceLabel
+                visible: false
+                wrapMode: Text.WordWrap
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                opacity: 0.75
+                Layout.fillWidth: true
+            }
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: " "
             visible: browserSyncSwitch.checked
             spacing: Kirigami.Units.smallSpacing
 
@@ -584,15 +620,12 @@ KCM.SimpleKCM {
                 text: i18n("Test ChatGPT")
                 icon.name: "network-connect"
                 onClicked: {
-                    var result = syncDetector.testConnection("chatgpt");
-                    chatgptTestLabel.text = result === "connected" ? i18n("Connected")
-                                          : result === "expired" ? i18n("Session expired")
-                                          : result === "not_found" ? i18n("No cookies found")
-                                          : result;
-                    chatgptTestLabel.color = result === "connected" ? Kirigami.Theme.positiveTextColor
-                                           : result === "expired" ? Kirigami.Theme.neutralTextColor
-                                           : Kirigami.Theme.negativeTextColor;
+                    var result = subscriptionsPage.normalizedSyncCode(syncDetector.testConnection("chatgpt"));
+                    chatgptTestLabel.text = syncDetector.connectionMessage("chatgpt", result);
+                    chatgptTestLabel.color = subscriptionsPage.syncStatusColor(result);
                     chatgptTestLabel.visible = true;
+                    chatgptGuidanceLabel.text = subscriptionsPage.syncGuidance(result, "chatgpt.com");
+                    chatgptGuidanceLabel.visible = true;
                 }
             }
             QQC2.Label {
@@ -601,6 +634,21 @@ KCM.SimpleKCM {
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
                 Layout.fillWidth: true
                 elide: Text.ElideRight
+            }
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: " "
+            visible: browserSyncSwitch.checked && chatgptGuidanceLabel.visible
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                id: chatgptGuidanceLabel
+                visible: false
+                wrapMode: Text.WordWrap
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                opacity: 0.75
+                Layout.fillWidth: true
             }
         }
     }

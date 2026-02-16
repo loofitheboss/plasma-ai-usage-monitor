@@ -13,6 +13,7 @@
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#api-key-requirements">API Keys</a> •
+  <a href="#documentation">Docs</a> •
   <a href="#changelog">Changelog</a>
 </p>
 
@@ -261,7 +262,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.8.1)
+├── CMakeLists.txt                  # Root build system (v2.8.2)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -400,95 +401,24 @@ The usage/costs endpoints require an Admin API key. Regular API keys will get a 
 **Usage history not recording:**
 Check that the History tab is enabled in configuration. Data is stored in `~/.local/share/plasma-ai-usage-monitor/usage_history.db`.
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [CHANGELOG.md](CHANGELOG.md) | Full version history from v1.0.0 to present |
+| [SECURITY.md](SECURITY.md) | Security policy, vulnerability reporting, and design decisions |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, coding standards, and contribution workflow |
+
 ## Changelog
 
-### v2.8.1 — Version Sync + Install Reliability
-- Fix stale UI version display by preferring plasmoid metadata version in QML
-- Normalize update checker parsing for prefixed/suffixed version strings
-- Add local install/reload scripts to override stale system package installs
-- Add diagnostics script for repo/local/system version mismatch visibility
-- Add CI/CTest guard to prevent hardcoded semantic versions in QML
+### v2.8.2 — Reliability + Test Hardening
 
-### v2.8.0 — Reliability + Compare Analytics
-- Add `AppInfo.version` singleton and remove hardcoded UI version drift
-- Add compare analytics mode for cross-provider and cross-tool history views
-- Add multi-series chart with legend, ranked hover tooltip, and crosshair
-- Add history mapping fix (display label vs DB name) for Google/Mistral/xAI
-- Add provider notification gating consistency for quota/budget/connectivity/error alerts
-- Add explicit loading/empty states and export gating in History
-- Add aggregated series APIs: `getProviderSeries()` and `getToolSeries()`
-- Add test coverage for series metrics/bucketing and history mapping regressions
-- Add version-consistency CI test and run `ctest` in GitHub Actions
+- Improve Browser Sync status diagnostics with actionable connection messages
+- Add provider mocked-HTTP unit tests (OpenAI, Anthropic, DeepSeek)
+- Add subscription monitor unit tests (plan defaults, install detection, sync diagnostics)
+- Add blocking `clang-tidy` CI gate with repository runner script
 
-### v2.7.0 — Final Polish & Hardening
-- Fix reply-after-deleteLater in OpenAI costs and monthly costs handlers
-- Fix reads-after-deleteLater in OpenAICompatible 429 and success paths
-- Fix shared DB connection name crash when multiple UsageDatabase instances exist
-- Fix compactDisplayMode config alias writing integer index instead of string
-- Fix timer binding breakage — remove imperative handler that broke declarative bindings
-- Add retry with exponential backoff to OpenAI costs and monthly costs endpoints
-- Add write throttling to tool snapshot recording (matching provider snapshot throttle)
-- Add restrictive permissions (owner-only) on cookie temp file copies
-- Add retentionDays range clamping (1–365 days)
-- Fix textToCents returning NaN for invalid budget input (now defaults to 0)
-
-### v2.6.0 — Critical Bug Fixes
-- Fix m_activeReplies never populated — beginRefresh() now actually aborts in-flight requests
-- Fix retry logic sending GET instead of POST for chat completion retries
-- Fix pruneOldData() totalDeleted only counting last table (now sums all 3 DELETEs)
-- Fix double deleteLater() in OpenAICompatible and OpenAI retry paths
-- Add beginRefresh(), createRequest(), and generation counter to GoogleProvider
-- Add generation counter and createRequest() to DeepSeek fetchBalance()
-- Add stale-reply guard to CopilotMonitor fetchOrgMetrics()
-- Add trackReply() for registering in-flight replies across all providers
-- Add short-lived cookie DB cache in BrowserCookieExtractor (avoids triple reads)
-- Add i18n() wrapping to all user-visible error messages in providers
-- Split updatechecker.h into .h/.cpp (was header-only with full implementation)
-- Add 30s timeout to UpdateChecker GitHub API request
-
-### v2.5.0 — Performance, Reliability & Architecture
-- Add centralized request builder with 30s timeout on all API requests
-- Add generation counter for request cancellation on re-refresh
-- Add retry with exponential backoff for transient HTTP errors (429/500/502/503)
-- Add Retry-After header parsing for 429 rate limit responses
-- Separate budgetWarning and budgetExceeded signals with notification dedup
-- Add HTTPS validation warning for custom base URLs
-- Centralize rate limit header parsing in ProviderBackend base class
-- Remove duplicate QNetworkAccessManager in CopilotMonitor
-- Add DB write throttling (60s per provider, skip if data unchanged)
-- Wrap pruneOldData() in SQLite transaction for atomic multi-table cleanup
-- Add eager database init via UsageDatabase::init() to avoid first-write stall
-
-### v2.4.0 — Feature Improvements & UI Enhancements
-- Add model name badge in ProviderCard header
-- Add subscription tool warning/critical indicators in panel badge
-- Fix rate limit bars to show "used" instead of "remaining" for visual consistency
-- Add All/Day/Month toggle to CostSummaryCard with per-provider breakdown
-- Add hover tooltips with crosshair to UsageChart canvas
-- Fix UsageChart Y-axis to start at zero for accurate visual scale
-- Add Bézier smooth curve interpolation to UsageChart
-- Refactor configBudget.qml from copy-paste to data-driven Repeater
-
-### v2.3.0 — Browser Sync
-- Add browser cookie sync for real-time usage data from Claude.ai and ChatGPT
-- Add BrowserCookieExtractor for reading Firefox session cookies (read-only)
-- Full dashboard view: session info, extra usage, tertiary limits, credits
-
-### v2.2.0 — Subscription Tool Tracking
-- Add subscription tool tracking for Claude Code, Codex CLI, and GitHub Copilot
-- Add SubscriptionToolBackend abstract base class with rolling time windows
-- Add SubscriptionToolCard.qml with progress bars and time-until-reset
-
-### v2.1.0 — Architecture Overhaul
-- Add OpenAICompatibleProvider base class, dedup Mistral/Groq/xAI/DeepSeek
-- Add token-based cost estimation with per-model pricing (~30 models)
-- Add per-provider refresh timers, collapsible cards, accessibility annotations
-- Data-driven provider cards via Repeater
-
-### v2.0.0 — Multi-Provider & History
-- Add Mistral AI, DeepSeek, Groq, and xAI/Grok providers
-- Add SQLite-based usage history with chart visualization
-- Add budget management with daily/monthly limits per provider
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ## License
 

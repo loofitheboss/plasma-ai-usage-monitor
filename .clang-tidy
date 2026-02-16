@@ -1,0 +1,11 @@
+Checks: >
+  -*,
+  bugprone-branch-clone,
+  bugprone-suspicious-string-compare,
+  performance-inefficient-string-concatenation,
+  modernize-use-nullptr,
+  readability-duplicate-include,
+  readability-implicit-bool-conversion
+WarningsAsErrors: '*'
+HeaderFilterRegex: '^(plugin/|.*/plugin/)'
+FormatStyle: none

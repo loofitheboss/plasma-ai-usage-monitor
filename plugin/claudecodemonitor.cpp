@@ -220,7 +220,9 @@ void ClaudeCodeMonitor::syncFromBrowser(const QString &cookieHeader, int browser
     if (cookieHeader.isEmpty()) {
         setSyncing(false);
         setSyncStatus(i18n("Not logged in"));
-        Q_EMIT syncCompleted(false, i18n("Not logged in — open claude.ai in Firefox first"));
+        const QString message = i18n("Not logged in — open claude.ai in Firefox first");
+        Q_EMIT syncDiagnostic(toolName(), QStringLiteral("not_logged_in"), message);
+        Q_EMIT syncCompleted(false, message);
         return;
     }
 
@@ -251,10 +253,14 @@ void ClaudeCodeMonitor::fetchAccountInfo(const QString &cookieHeader)
             setSyncing(false);
             if (httpStatus == 401 || httpStatus == 403) {
                 setSyncStatus(i18n("Session expired"));
-                Q_EMIT syncCompleted(false, i18n("Session expired — please log in to claude.ai in Firefox again"));
+                const QString message = i18n("Session expired — please log in to claude.ai in Firefox again");
+                Q_EMIT syncDiagnostic(toolName(), QStringLiteral("session_expired"), message);
+                Q_EMIT syncCompleted(false, message);
             } else {
                 setSyncStatus(i18n("Sync failed"));
-                Q_EMIT syncCompleted(false, reply->errorString());
+                const QString message = reply->errorString();
+                Q_EMIT syncDiagnostic(toolName(), QStringLiteral("network_error"), message);
+                Q_EMIT syncCompleted(false, message);
             }
             return;
         }
@@ -264,7 +270,9 @@ void ClaudeCodeMonitor::fetchAccountInfo(const QString &cookieHeader)
         if (doc.isNull() || !doc.isObject()) {
             setSyncing(false);
             setSyncStatus(i18n("Invalid response"));
-            Q_EMIT syncCompleted(false, i18n("Unexpected response from Claude.ai"));
+            const QString message = i18n("Unexpected response from Claude.ai");
+            Q_EMIT syncDiagnostic(toolName(), QStringLiteral("invalid_response"), message);
+            Q_EMIT syncCompleted(false, message);
             return;
         }
 
@@ -277,7 +285,9 @@ void ClaudeCodeMonitor::fetchAccountInfo(const QString &cookieHeader)
         if (account.isEmpty()) {
             setSyncing(false);
             setSyncStatus(i18n("Invalid response"));
-            Q_EMIT syncCompleted(false, i18n("API response format may have changed — missing account data"));
+            const QString message = i18n("API response format may have changed — missing account data");
+            Q_EMIT syncDiagnostic(toolName(), QStringLiteral("format_changed"), message);
+            Q_EMIT syncCompleted(false, message);
             return;
         }
         QJsonArray memberships = account.value(QStringLiteral("memberships")).toArray();
@@ -296,7 +306,9 @@ void ClaudeCodeMonitor::fetchAccountInfo(const QString &cookieHeader)
         if (orgUuid.isEmpty()) {
             setSyncing(false);
             setSyncStatus(i18n("No organization"));
-            Q_EMIT syncCompleted(false, i18n("Could not find your Claude organization"));
+            const QString message = i18n("Could not find your Claude organization");
+            Q_EMIT syncDiagnostic(toolName(), QStringLiteral("organization_missing"), message);
+            Q_EMIT syncCompleted(false, message);
             return;
         }
 
@@ -360,10 +372,14 @@ void ClaudeCodeMonitor::fetchUsageData(const QString &orgUuid, const QString &co
             setSyncing(false);
             if (httpStatus == 401 || httpStatus == 403) {
                 setSyncStatus(i18n("Session expired"));
-                Q_EMIT syncCompleted(false, i18n("Session expired — please log in to claude.ai in Firefox again"));
+                const QString message = i18n("Session expired — please log in to claude.ai in Firefox again");
+                Q_EMIT syncDiagnostic(toolName(), QStringLiteral("session_expired"), message);
+                Q_EMIT syncCompleted(false, message);
             } else {
                 setSyncStatus(i18n("Sync failed"));
-                Q_EMIT syncCompleted(false, reply->errorString());
+                const QString message = reply->errorString();
+                Q_EMIT syncDiagnostic(toolName(), QStringLiteral("network_error"), message);
+                Q_EMIT syncCompleted(false, message);
             }
             return;
         }
@@ -373,7 +389,9 @@ void ClaudeCodeMonitor::fetchUsageData(const QString &orgUuid, const QString &co
         if (!doc.isObject()) {
             setSyncing(false);
             setSyncStatus(i18n("Invalid response"));
-            Q_EMIT syncCompleted(false, i18n("Unexpected response from Claude.ai"));
+            const QString message = i18n("Unexpected response from Claude.ai");
+            Q_EMIT syncDiagnostic(toolName(), QStringLiteral("invalid_response"), message);
+            Q_EMIT syncCompleted(false, message);
             return;
         }
 
@@ -383,7 +401,9 @@ void ClaudeCodeMonitor::fetchUsageData(const QString &orgUuid, const QString &co
         if (!root.contains(QStringLiteral("five_hour")) && !root.contains(QStringLiteral("seven_day"))) {
             setSyncing(false);
             setSyncStatus(i18n("Invalid response"));
-            Q_EMIT syncCompleted(false, i18n("API response format may have changed — no usage data found"));
+            const QString message = i18n("API response format may have changed — no usage data found");
+            Q_EMIT syncDiagnostic(toolName(), QStringLiteral("format_changed"), message);
+            Q_EMIT syncCompleted(false, message);
             return;
         }
 

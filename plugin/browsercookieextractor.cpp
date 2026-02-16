@@ -267,6 +267,10 @@ QString BrowserCookieExtractor::testConnection(const QString &service) const
     QString domain;
     QStringList sessionCookieNames;
 
+    if (m_browserType != Firefox) {
+        return QStringLiteral("unsupported_browser");
+    }
+
     if (service == QStringLiteral("claude")) {
         domain = QStringLiteral("claude.ai");
         // Claude.ai primary session cookies
@@ -291,8 +295,17 @@ QString BrowserCookieExtractor::testConnection(const QString &service) const
         return QStringLiteral("unknown_service");
     }
 
+    if (firefoxProfilePath().isEmpty()) {
+        return QStringLiteral("profile_missing");
+    }
+
+    const QString dbPath = cookieDbPath();
+    if (dbPath.isEmpty() || !QFileInfo::exists(dbPath)) {
+        return QStringLiteral("cookie_db_missing");
+    }
+
     if (!hasCookiesFor(domain)) {
-        return QStringLiteral("not_found");
+        return QStringLiteral("cookies_not_found");
     }
 
     // Has cookies — check for actual session cookies (not just CF bot management etc.)
@@ -304,6 +317,42 @@ QString BrowserCookieExtractor::testConnection(const QString &service) const
         }
     }
 
-    // Has cookies for the domain but none of the expected session cookies
-    return QStringLiteral("expired");
+    // Has cookies for the domain but none of the expected session cookies.
+    return QStringLiteral("session_missing_or_expired");
+}
+
+QString BrowserCookieExtractor::connectionMessage(const QString &service, const QString &code) const
+{
+    Q_UNUSED(service);
+
+    QString normalizedCode = code;
+    if (normalizedCode == QStringLiteral("not_found")) {
+        normalizedCode = QStringLiteral("cookies_not_found");
+    } else if (normalizedCode == QStringLiteral("expired")) {
+        normalizedCode = QStringLiteral("session_missing_or_expired");
+    }
+
+    if (normalizedCode == QStringLiteral("connected")) {
+        return QStringLiteral("Connected");
+    }
+    if (normalizedCode == QStringLiteral("profile_missing")) {
+        return QStringLiteral("No Firefox profile detected on this system.");
+    }
+    if (normalizedCode == QStringLiteral("cookie_db_missing")) {
+        return QStringLiteral("Firefox profile found, but cookie DB is unavailable.");
+    }
+    if (normalizedCode == QStringLiteral("cookies_not_found")) {
+        return QStringLiteral("No cookies found for this service.");
+    }
+    if (normalizedCode == QStringLiteral("session_missing_or_expired")) {
+        return QStringLiteral("Session cookies missing or expired. Sign in again.");
+    }
+    if (normalizedCode == QStringLiteral("unsupported_browser")) {
+        return QStringLiteral("Only Firefox is supported currently.");
+    }
+    if (normalizedCode == QStringLiteral("unknown_service")) {
+        return QStringLiteral("Unknown service.");
+    }
+
+    return QStringLiteral("Connection check failed.");
 }

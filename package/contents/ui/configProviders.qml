@@ -8,6 +8,13 @@ import com.github.loofi.aiusagemonitor 1.0
 KCM.SimpleKCM {
     id: providersPage
 
+    // URL validation helper
+    function isInvalidUrl(url) {
+        if (url.length === 0) return false;
+        var lower = url.toLowerCase();
+        return !lower.startsWith("https://") && !lower.startsWith("http://");
+    }
+
     property alias cfg_openaiEnabled: openaiSwitch.checked
     property alias cfg_openaiModel: openaiModelField.text
     property alias cfg_openaiProjectId: openaiProjectField.text
@@ -183,6 +190,9 @@ KCM.SimpleKCM {
             text: plasmoid.configuration.openaiModel
             placeholderText: "gpt-4o"
             Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Only show usage for this model. Leave empty to show all models.")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
         }
 
         QQC2.TextField {
@@ -200,6 +210,18 @@ KCM.SimpleKCM {
             enabled: openaiSwitch.checked
             text: plasmoid.configuration.openaiCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(openaiBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
@@ -289,6 +311,18 @@ KCM.SimpleKCM {
             enabled: anthropicSwitch.checked
             text: plasmoid.configuration.anthropicCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(anthropicBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
@@ -401,6 +435,18 @@ KCM.SimpleKCM {
             text: plasmoid.configuration.googleCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
             Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(googleBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
 
         QQC2.Label {
@@ -491,6 +537,18 @@ KCM.SimpleKCM {
             text: plasmoid.configuration.mistralCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
             Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(mistralBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
 
         QQC2.Label {
@@ -577,6 +635,18 @@ KCM.SimpleKCM {
             enabled: deepseekSwitch.checked
             text: plasmoid.configuration.deepseekCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(deepseekBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
@@ -666,6 +736,18 @@ KCM.SimpleKCM {
             text: plasmoid.configuration.groqCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
             Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(groqBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
 
         QQC2.Label {
@@ -753,6 +835,18 @@ KCM.SimpleKCM {
             enabled: xaiSwitch.checked
             text: plasmoid.configuration.xaiCustomBaseUrl
             placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(xaiBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 

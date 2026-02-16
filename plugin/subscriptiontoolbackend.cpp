@@ -379,7 +379,9 @@ void SubscriptionToolBackend::syncFromBrowser(const QString &cookieHeader, int b
     Q_UNUSED(browserType);
     // Default implementation — subclasses override for actual sync
     setSyncStatus(QStringLiteral("Not supported"));
-    Q_EMIT syncCompleted(false, QStringLiteral("Sync not implemented for this tool"));
+    const QString message = QStringLiteral("Sync not implemented for this tool");
+    Q_EMIT syncDiagnostic(toolName(), QStringLiteral("not_supported"), message);
+    Q_EMIT syncCompleted(false, message);
 }
 
 QNetworkAccessManager *SubscriptionToolBackend::networkManager()

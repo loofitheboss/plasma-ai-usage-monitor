@@ -71,6 +71,9 @@ KCM.SimpleKCM {
                 from: 50
                 to: 100
                 stepSize: 5
+                QQC2.ToolTip.text: i18n("Trigger a desktop notification when spending reaches this percentage of the budget")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
 
             QQC2.Label {

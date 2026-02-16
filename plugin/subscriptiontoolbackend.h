@@ -203,6 +203,7 @@ Q_SIGNALS:
     void syncEnabledChanged();
     void syncStatusChanged();
     void syncCompleted(bool success, const QString &message);
+    void syncDiagnostic(const QString &toolName, const QString &code, const QString &message);
     void limitWarning(const QString &tool, int percentUsed);
     void limitReached(const QString &tool);
     void activityDetected(const QString &tool);

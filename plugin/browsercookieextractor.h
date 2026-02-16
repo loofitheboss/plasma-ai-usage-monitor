@@ -72,9 +72,17 @@ public:
     /**
      * Test connection to a service by checking if we have valid session cookies.
      * @param service One of "claude", "codex", "github"
-     * @return Status string: "connected", "expired", "not_found"
+     * @return Status string:
+     *   "connected"
+     *   "profile_missing"
+     *   "cookie_db_missing"
+     *   "cookies_not_found"
+     *   "session_missing_or_expired"
+     *   "unsupported_browser"
+     *   "unknown_service"
      */
     Q_INVOKABLE QString testConnection(const QString &service) const;
+    Q_INVOKABLE QString connectionMessage(const QString &service, const QString &code) const;
 
     /**
      * Detect available Firefox profiles.

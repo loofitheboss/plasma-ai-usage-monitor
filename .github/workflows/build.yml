@@ -22,18 +22,27 @@ jobs:
             cmake extra-cmake-modules g++ \
             qt6-base-dev qt6-declarative-dev \
             libkf6wallet-dev libkf6i18n-dev libkf6notifications-dev \
-            libplasma-dev
+            libplasma-dev \
+            clang-tidy
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Clang-Tidy
+        run: ./scripts/run_clang_tidy_ci.sh
 
       - name: Build
         run: |
-          mkdir build && cd build
-          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug
-          make -j$(nproc) 2>&1 | tee build.log
-          
+          cmake --build build --parallel $(nproc) 2>&1 | tee build/build.log
+
           # Fail if there are any warnings
-          if grep -q "warning:" build.log; then
+          if grep -q "warning:" build/build.log; then
             echo "::error::Build produced warnings"
-            grep "warning:" build.log
+            grep "warning:" build/build.log
             exit 1
           fi
 

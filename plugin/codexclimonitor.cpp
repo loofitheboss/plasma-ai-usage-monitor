@@ -159,7 +159,9 @@ void CodexCliMonitor::syncFromBrowser(const QString &cookieHeader, int browserTy
     if (cookieHeader.isEmpty()) {
         setSyncing(false);
         setSyncStatus(i18n("Not logged in"));
-        Q_EMIT syncCompleted(false, i18n("Not logged in — open chatgpt.com in Firefox first"));
+        const QString message = i18n("Not logged in — open chatgpt.com in Firefox first");
+        Q_EMIT syncDiagnostic(toolName(), QStringLiteral("not_logged_in"), message);
+        Q_EMIT syncCompleted(false, message);
         return;
     }
 
@@ -191,10 +193,14 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
             setSyncing(false);
             if (httpStatus == 401 || httpStatus == 403) {
                 setSyncStatus(i18n("Session expired"));
-                Q_EMIT syncCompleted(false, i18n("Session expired — please log in to chatgpt.com in Firefox again"));
+                const QString message = i18n("Session expired — please log in to chatgpt.com in Firefox again");
+                Q_EMIT syncDiagnostic(toolName(), QStringLiteral("session_expired"), message);
+                Q_EMIT syncCompleted(false, message);
             } else {
                 setSyncStatus(i18n("Sync failed"));
-                Q_EMIT syncCompleted(false, reply->errorString());
+                const QString message = reply->errorString();
+                Q_EMIT syncDiagnostic(toolName(), QStringLiteral("network_error"), message);
+                Q_EMIT syncCompleted(false, message);
             }
             return;
         }
@@ -204,7 +210,9 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
         if (doc.isNull() || !doc.isObject()) {
             setSyncing(false);
             setSyncStatus(i18n("Invalid response"));
-            Q_EMIT syncCompleted(false, i18n("Unexpected response from ChatGPT"));
+            const QString message = i18n("Unexpected response from ChatGPT");
+            Q_EMIT syncDiagnostic(toolName(), QStringLiteral("invalid_response"), message);
+            Q_EMIT syncCompleted(false, message);
             return;
         }
 
