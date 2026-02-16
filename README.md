@@ -179,6 +179,20 @@ If the widget doesn't appear after installation:
 plasmashell --replace &
 ```
 
+### Fix "still shows old version" (for example `v1.0`)
+
+If Plasma still shows an older widget build, verify what is installed and
+override it with a local user install:
+
+```bash
+./scripts/show_installed_versions.sh
+./scripts/install_local_plasmoid.sh
+./scripts/reload_plasma.sh
+```
+
+The local install at `~/.local/share/plasma/plasmoids/` takes precedence over
+system package files in `/usr/share/plasma/plasmoids/`.
+
 ### Run Tests
 
 ```bash
