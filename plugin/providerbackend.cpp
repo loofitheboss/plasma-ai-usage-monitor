@@ -323,7 +323,7 @@ void ProviderBackend::beginRefresh()
 
     // Abort and clean up any in-flight replies from previous refresh
     for (QNetworkReply *reply : std::as_const(m_activeReplies)) {
-        if (reply && reply->isRunning()) {
+        if (reply != nullptr && reply->isRunning()) {
             reply->abort();
         }
         reply->deleteLater();

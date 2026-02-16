@@ -386,7 +386,7 @@ void SubscriptionToolBackend::syncFromBrowser(const QString &cookieHeader, int b
 
 QNetworkAccessManager *SubscriptionToolBackend::networkManager()
 {
-    if (!m_networkManager) {
+    if (m_networkManager == nullptr) {
         m_networkManager = new QNetworkAccessManager(this);
     }
     return m_networkManager;

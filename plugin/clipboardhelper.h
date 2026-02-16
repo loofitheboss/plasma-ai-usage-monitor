@@ -20,7 +20,7 @@ public:
     Q_INVOKABLE void setText(const QString &text) const
     {
         QClipboard *clipboard = QGuiApplication::clipboard();
-        if (clipboard) {
+        if (clipboard != nullptr) {
             clipboard->setText(text);
         }
     }
@@ -29,7 +29,7 @@ public:
     Q_INVOKABLE QString text() const
     {
         QClipboard *clipboard = QGuiApplication::clipboard();
-        return clipboard ? clipboard->text() : QString();
+        return (clipboard != nullptr) ? clipboard->text() : QString();
     }
 };
 

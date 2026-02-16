@@ -26,7 +26,7 @@ void SecretsManager::openWallet()
         KWallet::Wallet::Asynchronous
     );
 
-    if (m_wallet) {
+    if (m_wallet != nullptr) {
         connect(m_wallet, &KWallet::Wallet::walletOpened,
                 this, &SecretsManager::onWalletOpened);
     } else {
@@ -64,7 +64,7 @@ void SecretsManager::onWalletOpened(bool success)
 
 bool SecretsManager::ensureFolder()
 {
-    if (!m_wallet || !m_walletOpen) return false;
+    if (m_wallet == nullptr || !m_walletOpen) return false;
 
     if (!m_wallet->hasFolder(m_folderName)) {
         if (!m_wallet->createFolder(m_folderName)) {
