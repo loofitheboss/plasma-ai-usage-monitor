@@ -32,6 +32,9 @@ sudo cmake --install build
 
 # Or use the install script
 ./install.sh
+
+# Or upgrade the plasmoid only in your user profile (no sudo)
+./scripts/install_local_plasmoid.sh
 ```
 
 ### Testing Changes
@@ -40,6 +43,18 @@ After modifying QML files, restart Plasma Shell to pick up changes:
 
 ```bash
 plasmashell --replace &
+```
+
+You can also use:
+
+```bash
+./scripts/reload_plasma.sh
+```
+
+If the UI still shows an old app version, run:
+
+```bash
+./scripts/show_installed_versions.sh
 ```
 
 To test in a standalone window (without adding to panel):
