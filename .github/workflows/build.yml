@@ -22,7 +22,7 @@ jobs:
           dnf -y update
           dnf -y install \
             cmake extra-cmake-modules gcc-c++ \
-            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-sql \
+            qt6-qtbase-devel qt6-qtdeclarative-devel \
             libplasma-devel \
             kf6-kwallet-devel kf6-ki18n-devel kf6-knotifications-devel \
             clang-tools-extra \
