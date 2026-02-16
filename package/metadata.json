@@ -7,11 +7,13 @@
             }
         ],
         "Category": "System Information",
+        "Copyright": "© 2025-2026 Loofi",
         "Description": "Monitor AI API token usage, rate limits, costs, and budgets across multiple providers",
         "Icon": "cpu",
         "Id": "com.github.loofi.aiusagemonitor",
+        "License": "GPL-3.0-or-later",
         "Name": "AI Usage Monitor",
-        "Version": "2.3.0",
+        "Version": "2.7.0",
         "Website": "https://github.com/loofitheboss/plasma-ai-usage-monitor"
     },
     "X-Plasma-API-Minimum-Version": "6.0",

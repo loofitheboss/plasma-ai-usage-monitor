@@ -2,7 +2,6 @@
 #define COPILOTMONITOR_H
 
 #include "subscriptiontoolbackend.h"
-#include <QNetworkAccessManager>
 #include <QNetworkReply>
 
 /**
@@ -79,13 +78,13 @@ private Q_SLOTS:
     void onBillingReply(QNetworkReply *reply);
 
 private:
-    QNetworkAccessManager *m_networkManager;
     QString m_githubToken;
     QString m_orgName;
 
     bool m_hasOrgMetrics = false;
     int m_orgActiveUsers = 0;
     int m_orgTotalSeats = 0;
+    int m_fetchGeneration = 0; // stale-reply guard for org metrics
 };
 
 #endif // COPILOTMONITOR_H

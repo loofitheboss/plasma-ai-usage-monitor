@@ -1,5 +1,6 @@
 #include "browsercookieextractor.h"
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QSettings>
 #include <QSqlDatabase>
@@ -7,6 +8,7 @@
 #include <QSqlError>
 #include <QDebug>
 #include <QStandardPaths>
+#include <QTemporaryFile>
 #include <QUuid>
 
 BrowserCookieExtractor::BrowserCookieExtractor(QObject *parent)
@@ -143,6 +145,12 @@ QString BrowserCookieExtractor::chromiumProfilePath() const
 
 QMap<QString, QString> BrowserCookieExtractor::readFirefoxCookies(const QString &domain) const
 {
+    // Return cached result if same domain and within TTL
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (domain == m_cachedDomain && (now - m_cacheTimestamp) < CACHE_TTL_MS) {
+        return m_cachedCookies;
+    }
+
     QMap<QString, QString> cookies;
 
     QString dbPath = cookieDbPath();
@@ -153,10 +161,32 @@ QMap<QString, QString> BrowserCookieExtractor::readFirefoxCookies(const QString 
     // Use a unique connection name to avoid conflicts
     QString connName = QStringLiteral("firefox_cookies_") + QUuid::createUuid().toString(QUuid::WithoutBraces);
 
+    // Copy the database to a temp file to avoid Firefox WAL lock issues.
+    // Firefox holds an exclusive lock on cookies.sqlite while running,
+    // so we make a snapshot copy and read from that instead.
+    QTemporaryFile tmpFile;
+    tmpFile.setAutoRemove(true);
+    if (!tmpFile.open()) {
+        qWarning() << "BrowserCookieExtractor: Cannot create temp file for cookie db copy";
+        return cookies;
+    }
+    // Set restrictive permissions — temp file contains session cookies
+    tmpFile.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+    QString tmpPath = tmpFile.fileName();
+    tmpFile.close();
+
+    if (!QFile::copy(dbPath, tmpPath)) {
+        // QFile::copy fails if dest exists (QTemporaryFile created it), remove first
+        QFile::remove(tmpPath);
+        if (!QFile::copy(dbPath, tmpPath)) {
+            qWarning() << "BrowserCookieExtractor: Cannot copy cookies.sqlite to temp file";
+            return cookies;
+        }
+    }
+
     {
         QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connName);
-        db.setDatabaseName(dbPath);
-        db.setConnectOptions(QStringLiteral("QSQLITE_OPEN_READONLY=1"));
+        db.setDatabaseName(tmpPath);
 
         if (!db.open()) {
             qWarning() << "BrowserCookieExtractor: Cannot open Firefox cookies.sqlite:" << db.lastError().text();
@@ -191,6 +221,13 @@ QMap<QString, QString> BrowserCookieExtractor::readFirefoxCookies(const QString 
     }
 
     QSqlDatabase::removeDatabase(connName);
+    QFile::remove(tmpPath);
+
+    // Update cache
+    m_cachedDomain = domain;
+    m_cachedCookies = cookies;
+    m_cacheTimestamp = QDateTime::currentMSecsSinceEpoch();
+
     return cookies;
 }
 
@@ -228,15 +265,28 @@ QString BrowserCookieExtractor::getCookieHeader(const QString &domain) const
 QString BrowserCookieExtractor::testConnection(const QString &service) const
 {
     QString domain;
-    QStringList requiredCookies;
+    QStringList sessionCookieNames;
 
     if (service == QStringLiteral("claude")) {
         domain = QStringLiteral("claude.ai");
-        // Claude.ai uses various session cookies — check for any
-    } else if (service == QStringLiteral("codex")) {
+        // Claude.ai primary session cookies
+        sessionCookieNames = {
+            QStringLiteral("sessionKey"),
+            QStringLiteral("__Secure-next-auth.session-token"),
+        };
+    } else if (service == QStringLiteral("chatgpt") || service == QStringLiteral("codex")) {
         domain = QStringLiteral("chatgpt.com");
+        // ChatGPT primary session cookies
+        sessionCookieNames = {
+            QStringLiteral("__Secure-next-auth.session-token"),
+            QStringLiteral("__Secure-next-auth.callback-url"),
+        };
     } else if (service == QStringLiteral("github")) {
         domain = QStringLiteral("github.com");
+        sessionCookieNames = {
+            QStringLiteral("user_session"),
+            QStringLiteral("dotcom_user"),
+        };
     } else {
         return QStringLiteral("unknown_service");
     }
@@ -245,27 +295,15 @@ QString BrowserCookieExtractor::testConnection(const QString &service) const
         return QStringLiteral("not_found");
     }
 
-    // Has cookies — check if they look valid (non-empty session tokens)
+    // Has cookies — check for actual session cookies (not just CF bot management etc.)
     QMap<QString, QString> cookies = readFirefoxCookies(domain);
 
-    // Look for common session cookie names
-    QStringList sessionNames = {
-        QStringLiteral("sessionKey"),
-        QStringLiteral("__Secure-next-auth.session-token"),
-        QStringLiteral("__Host-next-auth.csrf-token"),
-        QStringLiteral("__cf_bm"),
-        QStringLiteral("_gh_sess"),
-        QStringLiteral("user_session"),
-        QStringLiteral("dotcom_user"),
-        QStringLiteral("logged_in")
-    };
-
-    for (const QString &name : sessionNames) {
+    for (const QString &name : sessionCookieNames) {
         if (cookies.contains(name) && !cookies.value(name).isEmpty()) {
             return QStringLiteral("connected");
         }
     }
 
-    // Has cookies but none of the expected session cookies
+    // Has cookies for the domain but none of the expected session cookies
     return QStringLiteral("expired");
 }

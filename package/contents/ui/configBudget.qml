@@ -7,22 +7,43 @@ import org.kde.kcmutils as KCM
 KCM.SimpleKCM {
     id: budgetPage
 
-    // Config stores cents (Int). SpinBox value is also cents. Direct alias works.
-    property alias cfg_openaiDailyBudget: openaiDailyField.value
-    property alias cfg_openaiMonthlyBudget: openaiMonthlyField.value
-    property alias cfg_anthropicDailyBudget: anthropicDailyField.value
-    property alias cfg_anthropicMonthlyBudget: anthropicMonthlyField.value
-    property alias cfg_googleDailyBudget: googleDailyField.value
-    property alias cfg_googleMonthlyBudget: googleMonthlyField.value
-    property alias cfg_mistralDailyBudget: mistralDailyField.value
-    property alias cfg_mistralMonthlyBudget: mistralMonthlyField.value
-    property alias cfg_deepseekDailyBudget: deepseekDailyField.value
-    property alias cfg_deepseekMonthlyBudget: deepseekMonthlyField.value
-    property alias cfg_groqDailyBudget: groqDailyField.value
-    property alias cfg_groqMonthlyBudget: groqMonthlyField.value
-    property alias cfg_xaiDailyBudget: xaiDailyField.value
-    property alias cfg_xaiMonthlyBudget: xaiMonthlyField.value
+    // Config stores cents (Int). SpinBox value is also cents.
+    property int cfg_openaiDailyBudget
+    property int cfg_openaiMonthlyBudget
+    property int cfg_anthropicDailyBudget
+    property int cfg_anthropicMonthlyBudget
+    property int cfg_googleDailyBudget
+    property int cfg_googleMonthlyBudget
+    property int cfg_mistralDailyBudget
+    property int cfg_mistralMonthlyBudget
+    property int cfg_deepseekDailyBudget
+    property int cfg_deepseekMonthlyBudget
+    property int cfg_groqDailyBudget
+    property int cfg_groqMonthlyBudget
+    property int cfg_xaiDailyBudget
+    property int cfg_xaiMonthlyBudget
     property alias cfg_budgetWarningPercent: warningPercentSlider.value
+
+    // Model for all providers
+    readonly property var providerBudgets: [
+        { name: "OpenAI",        dailyKey: "openaiDailyBudget",    monthlyKey: "openaiMonthlyBudget"    },
+        { name: "Anthropic",     dailyKey: "anthropicDailyBudget", monthlyKey: "anthropicMonthlyBudget" },
+        { name: "Google Gemini", dailyKey: "googleDailyBudget",    monthlyKey: "googleMonthlyBudget"    },
+        { name: "Mistral AI",    dailyKey: "mistralDailyBudget",   monthlyKey: "mistralMonthlyBudget"   },
+        { name: "DeepSeek",      dailyKey: "deepseekDailyBudget",  monthlyKey: "deepseekMonthlyBudget"  },
+        { name: "Groq",          dailyKey: "groqDailyBudget",      monthlyKey: "groqMonthlyBudget"      },
+        { name: "xAI / Grok",    dailyKey: "xaiDailyBudget",       monthlyKey: "xaiMonthlyBudget"       }
+    ]
+
+    // Shared formatting functions
+    function centsToText(value) {
+        return "$" + (value / 100).toFixed(2);
+    }
+
+    function textToCents(text) {
+        var val = parseFloat(text.replace("$", ""));
+        return isNaN(val) ? 0 : Math.round(val * 100);
+    }
 
     Kirigami.FormLayout {
         anchors.fill: parent
@@ -50,7 +71,6 @@ KCM.SimpleKCM {
                 from: 50
                 to: 100
                 stepSize: 5
-                value: plasmoid.configuration.budgetWarningPercent
             }
 
             QQC2.Label {
@@ -60,227 +80,63 @@ KCM.SimpleKCM {
             }
         }
 
-        // ── OpenAI ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("OpenAI")
-        }
+        // ── Per-provider budget sections (data-driven) ──
+        Repeater {
+            model: budgetPage.providerBudgets
 
-        QQC2.SpinBox {
-            id: openaiDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
+            ColumnLayout {
+                spacing: 0
+                Layout.fillWidth: true
 
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
+                Kirigami.Separator {
+                    Kirigami.FormData.isSection: true
+                    Kirigami.FormData.label: modelData.name
+                    Layout.fillWidth: true
+                }
 
-        QQC2.SpinBox {
-            id: openaiMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
+                QQC2.SpinBox {
+                    id: dailyField
+                    Kirigami.FormData.label: i18n("Daily budget ($):")
+                    from: 0; to: 100000; stepSize: 100
+                    value: budgetPage["cfg_" + modelData.dailyKey]
 
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
+                    textFromValue: function(value, locale) {
+                        return budgetPage.centsToText(value);
+                    }
+                    valueFromText: function(text, locale) {
+                        return budgetPage.textToCents(text);
+                    }
 
-        // ── Anthropic ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Anthropic")
-        }
+                    onValueModified: {
+                        budgetPage["cfg_" + modelData.dailyKey] = value;
+                    }
 
-        QQC2.SpinBox {
-            id: anthropicDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
+                    Component.onCompleted: {
+                        value = budgetPage["cfg_" + modelData.dailyKey];
+                    }
+                }
 
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
+                QQC2.SpinBox {
+                    id: monthlyField
+                    Kirigami.FormData.label: i18n("Monthly budget ($):")
+                    from: 0; to: 1000000; stepSize: 500
+                    value: budgetPage["cfg_" + modelData.monthlyKey]
 
-        QQC2.SpinBox {
-            id: anthropicMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
+                    textFromValue: function(value, locale) {
+                        return budgetPage.centsToText(value);
+                    }
+                    valueFromText: function(text, locale) {
+                        return budgetPage.textToCents(text);
+                    }
 
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
+                    onValueModified: {
+                        budgetPage["cfg_" + modelData.monthlyKey] = value;
+                    }
 
-        // ── Google ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Google Gemini")
-        }
-
-        QQC2.SpinBox {
-            id: googleDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        QQC2.SpinBox {
-            id: googleMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        // ── Mistral ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Mistral AI")
-        }
-
-        QQC2.SpinBox {
-            id: mistralDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        QQC2.SpinBox {
-            id: mistralMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        // ── DeepSeek ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("DeepSeek")
-        }
-
-        QQC2.SpinBox {
-            id: deepseekDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        QQC2.SpinBox {
-            id: deepseekMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        // ── Groq ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("Groq")
-        }
-
-        QQC2.SpinBox {
-            id: groqDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        QQC2.SpinBox {
-            id: groqMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        // ── xAI ──
-        Kirigami.Separator {
-            Kirigami.FormData.isSection: true
-            Kirigami.FormData.label: i18n("xAI / Grok")
-        }
-
-        QQC2.SpinBox {
-            id: xaiDailyField
-            Kirigami.FormData.label: i18n("Daily budget ($):")
-            from: 0; to: 100000; stepSize: 100
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
-            }
-        }
-
-        QQC2.SpinBox {
-            id: xaiMonthlyField
-            Kirigami.FormData.label: i18n("Monthly budget ($):")
-            from: 0; to: 1000000; stepSize: 500
-
-            textFromValue: function(value, locale) {
-                return "$" + (value / 100).toFixed(2);
-            }
-            valueFromText: function(text, locale) {
-                return Math.round(parseFloat(text.replace("$", "")) * 100);
+                    Component.onCompleted: {
+                        value = budgetPage["cfg_" + modelData.monthlyKey];
+                    }
+                }
             }
         }
     }

@@ -1,4 +1,5 @@
 #include "openaicompatibleprovider.h"
+#include <KLocalizedString>
 #include <QNetworkRequest>
 #include <QDebug>
 
@@ -19,11 +20,12 @@ void OpenAICompatibleProvider::setModel(const QString &model)
 void OpenAICompatibleProvider::refresh()
 {
     if (!hasApiKey()) {
-        setError(QStringLiteral("No API key configured"));
+        setError(i18n("No API key configured"));
         setConnected(false);
         return;
     }
 
+    beginRefresh();
     setLoading(true);
     clearError();
     m_pendingRequests = 0;
@@ -35,9 +37,7 @@ void OpenAICompatibleProvider::fetchRateLimits()
     // Use minimal chat completion to read rate limit headers
     QUrl url(QStringLiteral("%1/chat/completions").arg(effectiveBaseUrl(defaultBaseUrl())));
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
+    QNetworkRequest request = createRequest(url);
 
     QJsonObject payload;
     payload.insert(QStringLiteral("model"), m_model);
@@ -51,38 +51,22 @@ void OpenAICompatibleProvider::fetchRateLimits()
     payload.insert(QStringLiteral("messages"), messages);
 
     QByteArray body = QJsonDocument(payload).toJson(QJsonDocument::Compact);
+    m_lastRequestBody = body;
 
     addPendingRequest();
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->post(request, body);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onCompletionFinished(reply);
     });
 }
 
 void OpenAICompatibleProvider::parseRateLimitHeaders(QNetworkReply *reply)
 {
-    auto readHeader = [&](const char *name) -> int {
-        QByteArray val = reply->rawHeader(name);
-        return val.isEmpty() ? 0 : val.toInt();
-    };
-
-    int rlRequests = readHeader("x-ratelimit-limit-requests");
-    int rlTokens = readHeader("x-ratelimit-limit-tokens");
-    int rlReqRemaining = readHeader("x-ratelimit-remaining-requests");
-    int rlTokRemaining = readHeader("x-ratelimit-remaining-tokens");
-    QString rlReset = QString::fromUtf8(reply->rawHeader("x-ratelimit-reset-requests"));
-
-    if (rlRequests > 0) {
-        setRateLimitRequests(rlRequests);
-        setRateLimitRequestsRemaining(rlReqRemaining);
-    }
-    if (rlTokens > 0) {
-        setRateLimitTokens(rlTokens);
-        setRateLimitTokensRemaining(rlTokRemaining);
-    }
-    if (!rlReset.isEmpty()) {
-        setRateLimitResetTime(rlReset);
-    }
+    // Delegate to centralized base class parser
+    ProviderBackend::parseRateLimitHeaders(reply, "x-ratelimit-");
 }
 
 void OpenAICompatibleProvider::parseUsageBody(QNetworkReply *reply)
@@ -110,29 +94,41 @@ void OpenAICompatibleProvider::parseUsageBody(QNetworkReply *reply)
 
 void OpenAICompatibleProvider::onCompletionFinished(QNetworkReply *reply)
 {
-    reply->deleteLater();
     decrementPendingRequest();
 
     if (reply->error() != QNetworkReply::NoError) {
         int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        // Retry transient errors (retryRequest takes ownership of reply)
+        if (isRetryableStatus(httpStatus)) {
+            addPendingRequest(); // re-increment since retry is pending
+            retryRequest(reply, reply->url(), m_lastRequestBody,
+                         [this](QNetworkReply *r) { onCompletionFinished(r); });
+            return;
+        }
+
         if (httpStatus == 401) {
-            setError(QStringLiteral("Invalid API key"));
+            setError(i18n("Invalid API key"));
         } else if (httpStatus == 429) {
-            setError(QStringLiteral("Rate limited"));
+            setError(i18n("Rate limited"));
             // Still parse headers on 429
             parseRateLimitHeaders(reply);
         } else {
-            setError(QStringLiteral("API error: %1 (HTTP %2)")
-                         .arg(reply->errorString())
-                         .arg(httpStatus));
+            setError(i18n("API error: %1 (HTTP %2)",
+                         reply->errorString(),
+                         QString::number(httpStatus)));
+        }
+
+        reply->deleteLater();
+
+        if (httpStatus != 429 && httpStatus != 401) {
             onAllRequestsDone();
             return;
         }
-    }
-
-    if (reply->error() == QNetworkReply::NoError) {
+    } else {
         parseRateLimitHeaders(reply);
         parseUsageBody(reply);
+        reply->deleteLater();
         setConnected(true);
 
         // Update estimated cost based on accumulated tokens

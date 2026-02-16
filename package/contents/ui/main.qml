@@ -75,26 +75,7 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.openaiCustomBaseUrl
         dailyBudget: plasmoid.configuration.openaiDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.openaiMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.openaiNotificationsEnabled) {
-                sendNotification(i18n("OpenAI Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("OpenAI", openaiBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     AnthropicProvider {
@@ -103,54 +84,17 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.anthropicCustomBaseUrl
         dailyBudget: plasmoid.configuration.anthropicDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.anthropicMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.anthropicNotificationsEnabled) {
-                sendNotification(i18n("Anthropic Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("Anthropic", anthropicBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     GoogleProvider {
         id: googleBackend
         model: plasmoid.configuration.googleModel
+        tier: plasmoid.configuration.googleTier
         customBaseUrl: plasmoid.configuration.googleCustomBaseUrl
         dailyBudget: plasmoid.configuration.googleDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.googleMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.googleNotificationsEnabled) {
-                sendNotification(i18n("Google Gemini Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("Google", googleBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     MistralProvider {
@@ -159,26 +103,7 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.mistralCustomBaseUrl
         dailyBudget: plasmoid.configuration.mistralDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.mistralMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.mistralNotificationsEnabled) {
-                sendNotification(i18n("Mistral AI Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("Mistral", mistralBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     DeepSeekProvider {
@@ -187,26 +112,7 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.deepseekCustomBaseUrl
         dailyBudget: plasmoid.configuration.deepseekDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.deepseekMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.deepseekNotificationsEnabled) {
-                sendNotification(i18n("DeepSeek Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("DeepSeek", deepseekBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     GroqProvider {
@@ -215,26 +121,7 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.groqCustomBaseUrl
         dailyBudget: plasmoid.configuration.groqDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.groqMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.groqNotificationsEnabled) {
-                sendNotification(i18n("Groq Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("Groq", groqBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     XAIProvider {
@@ -243,26 +130,7 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.xaiCustomBaseUrl
         dailyBudget: plasmoid.configuration.xaiDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.xaiMonthlyBudget / 100.0
-
-        onQuotaWarning: function(provider, percent) {
-            handleQuotaWarning(provider, percent);
-        }
-        onBudgetExceeded: function(provider, period, spent, budget) {
-            handleBudgetExceeded(provider, period, spent, budget);
-        }
-        onProviderDisconnected: function(provider) {
-            handleProviderDisconnected(provider);
-        }
-        onProviderReconnected: function(provider) {
-            handleProviderReconnected(provider);
-        }
-        onErrorChanged: {
-            if (error && plasmoid.configuration.notifyOnError
-                && plasmoid.configuration.xaiNotificationsEnabled) {
-                sendNotification(i18n("xAI Error"), error);
-            }
-        }
-        onDataUpdated: recordProviderSnapshot("xAI", xaiBackend)
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
     // ── Subscription Tool Monitors ──
@@ -357,6 +225,8 @@ PlasmoidItem {
             if (secrets.walletOpen && secrets.hasKey("copilot_github")) {
                 githubToken = secrets.getKey("copilot_github");
             }
+            // Fetch org metrics if configured
+            fetchOrgMetrics();
         }
 
         onLimitWarning: function(tool, percent) {
@@ -426,7 +296,7 @@ PlasmoidItem {
 
     UpdateChecker {
         id: updateChecker
-        currentVersion: "2.2.0"
+        currentVersion: "2.3.0"
         checkIntervalHours: plasmoid.configuration.updateCheckInterval || 12
 
         onUpdateAvailable: function(latestVersion, releaseUrl) {
@@ -523,6 +393,15 @@ PlasmoidItem {
         onTriggered: usageDatabase.pruneOldData()
     }
 
+    // Copilot org metrics refresh (runs once every hour)
+    Timer {
+        id: copilotOrgTimer
+        interval: 60 * 60 * 1000 // 1 hour
+        running: plasmoid.configuration.copilotEnabled && copilotMonitor.githubToken !== "" && copilotMonitor.orgName !== ""
+        repeat: true
+        onTriggered: copilotMonitor.fetchOrgMetrics()
+    }
+
     // ── Context Menu Actions ──
 
     Plasmoid.contextualActions: [
@@ -536,13 +415,13 @@ PlasmoidItem {
     // ── Helper: all provider info ──
 
     readonly property var allProviders: [
-        { name: "OpenAI", configKey: "openai", backend: openaiBackend, enabled: plasmoid.configuration.openaiEnabled, color: "#10A37F" },
-        { name: "Anthropic", configKey: "anthropic", backend: anthropicBackend, enabled: plasmoid.configuration.anthropicEnabled, color: "#D4A574" },
-        { name: "Google Gemini", configKey: "google", backend: googleBackend, enabled: plasmoid.configuration.googleEnabled, color: "#4285F4" },
-        { name: "Mistral AI", configKey: "mistral", backend: mistralBackend, enabled: plasmoid.configuration.mistralEnabled, color: "#FF7000" },
-        { name: "DeepSeek", configKey: "deepseek", backend: deepseekBackend, enabled: plasmoid.configuration.deepseekEnabled, color: "#5B6EE1" },
-        { name: "Groq", configKey: "groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled, color: "#F55036" },
-        { name: "xAI / Grok", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" }
+        { name: "OpenAI", dbName: "OpenAI", configKey: "openai", backend: openaiBackend, enabled: plasmoid.configuration.openaiEnabled, color: "#10A37F" },
+        { name: "Anthropic", dbName: "Anthropic", configKey: "anthropic", backend: anthropicBackend, enabled: plasmoid.configuration.anthropicEnabled, color: "#D4A574" },
+        { name: "Google Gemini", dbName: "Google", configKey: "google", backend: googleBackend, enabled: plasmoid.configuration.googleEnabled, color: "#4285F4" },
+        { name: "Mistral AI", dbName: "Mistral", configKey: "mistral", backend: mistralBackend, enabled: plasmoid.configuration.mistralEnabled, color: "#FF7000" },
+        { name: "DeepSeek", dbName: "DeepSeek", configKey: "deepseek", backend: deepseekBackend, enabled: plasmoid.configuration.deepseekEnabled, color: "#5B6EE1" },
+        { name: "Groq", dbName: "Groq", configKey: "groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled, color: "#F55036" },
+        { name: "xAI / Grok", dbName: "xAI", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" }
     ]
 
     readonly property var allSubscriptionTools: [
@@ -615,6 +494,38 @@ PlasmoidItem {
         );
     }
 
+    // Connect common signal handlers for all providers (avoids 7× copy-paste)
+    function connectProviderSignals() {
+        for (var i = 0; i < allProviders.length; i++) {
+            var p = allProviders[i];
+            var b = p.backend;
+            // First 4 signals pass provider name, so direct connection works
+            b.quotaWarning.connect(handleQuotaWarning);
+            b.budgetWarning.connect(handleBudgetWarning);
+            b.budgetExceeded.connect(handleBudgetExceeded);
+            b.providerDisconnected.connect(handleProviderDisconnected);
+            b.providerReconnected.connect(handleProviderReconnected);
+            // Error & snapshot need per-provider closure
+            b.errorChanged.connect(makeErrorHandler(p.name, p.configKey, b));
+            b.dataUpdated.connect(makeSnapshotHandler(p.dbName, b));
+        }
+    }
+
+    function makeErrorHandler(displayName, configKey, backend) {
+        return function() {
+            if (backend.error && plasmoid.configuration.notifyOnError
+                && plasmoid.configuration[configKey + "NotificationsEnabled"]) {
+                sendNotification(i18n("%1 Error", displayName), backend.error);
+            }
+        };
+    }
+
+    function makeSnapshotHandler(dbName, backend) {
+        return function() {
+            recordProviderSnapshot(dbName, backend);
+        };
+    }
+
     function canNotify(eventKey) {
         var cooldown = plasmoid.configuration.notificationCooldownMinutes * 60 * 1000;
         var now = Date.now();
@@ -659,6 +570,18 @@ PlasmoidItem {
             warningNotification.urgency = Notification.NormalUrgency;
             warningNotification.sendEvent();
         }
+    }
+
+    function handleBudgetWarning(provider, period, spent, budget) {
+        if (!plasmoid.configuration.alertsEnabled) return;
+        if (!plasmoid.configuration.notifyOnBudgetWarning) return;
+        if (!canNotify("budgetwarn_" + provider + "_" + period)) return;
+
+        budgetNotification.text = i18n("%1: %2 budget at %3% — $%4 / $%5",
+            provider, period, Math.round(spent / budget * 100),
+            spent.toFixed(2), budget.toFixed(2));
+        budgetNotification.urgency = Notification.NormalUrgency;
+        budgetNotification.sendEvent();
     }
 
     function handleBudgetExceeded(provider, period, spent, budget) {
@@ -765,9 +688,14 @@ PlasmoidItem {
     // ── Lifecycle ──
 
     Component.onCompleted: {
+        // Wire up shared signal handlers for all providers
+        connectProviderSignals();
+
         if (secrets.walletOpen) {
             loadApiKeys();
         }
+        // Eagerly initialize database (avoids blocking on first write)
+        usageDatabase.init();
         // Initial prune of old data
         usageDatabase.pruneOldData();
         // Initial browser sync after a short delay
@@ -804,14 +732,9 @@ PlasmoidItem {
         function onXaiModelChanged() { xaiBackend.model = plasmoid.configuration.xaiModel; }
 
         function onRefreshIntervalChanged() {
-            // Update all per-provider timers that use the global default (interval == 0)
-            openaiRefreshTimer.interval = effectiveInterval(plasmoid.configuration.openaiRefreshInterval);
-            anthropicRefreshTimer.interval = effectiveInterval(plasmoid.configuration.anthropicRefreshInterval);
-            googleRefreshTimer.interval = effectiveInterval(plasmoid.configuration.googleRefreshInterval);
-            mistralRefreshTimer.interval = effectiveInterval(plasmoid.configuration.mistralRefreshInterval);
-            deepseekRefreshTimer.interval = effectiveInterval(plasmoid.configuration.deepseekRefreshInterval);
-            groqRefreshTimer.interval = effectiveInterval(plasmoid.configuration.groqRefreshInterval);
-            xaiRefreshTimer.interval = effectiveInterval(plasmoid.configuration.xaiRefreshInterval);
+            // The per-provider Timer declarations use declarative bindings
+            // on effectiveInterval(), so they auto-update when the global
+            // refreshInterval changes.  No imperative re-assignment needed.
         }
 
         // Subscription tool config changes

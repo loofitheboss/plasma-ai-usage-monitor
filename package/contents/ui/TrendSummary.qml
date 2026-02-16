@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
+import "Utils.js" as Utils
 
 /**
  * Summary statistics for historical usage data.
@@ -47,6 +48,8 @@ Item {
         PlasmaComponents.Label {
             text: "$" + (summaryData.totalCost || 0).toFixed(4)
             font.bold: true
+            elide: Text.ElideRight
+            Layout.fillWidth: true
         }
 
         // ── Average Daily Cost ──
@@ -58,6 +61,8 @@ Item {
         }
         PlasmaComponents.Label {
             text: "$" + (summaryData.avgDailyCost || 0).toFixed(4)
+            elide: Text.ElideRight
+            Layout.fillWidth: true
         }
 
         // ── Max Daily Cost ──
@@ -132,6 +137,8 @@ Item {
             }
 
             PlasmaComponents.Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: {
                     var dir = trendDirection();
                     if (dir > 0) return i18n("Costs increasing");
@@ -146,12 +153,10 @@ Item {
         }
     }
 
-    // ── Helper functions ──
+    // ── Helper functions (delegated to Utils.js) ──
 
     function formatNumber(val) {
-        if (val >= 1000000) return (val / 1000000).toFixed(1) + "M";
-        if (val >= 1000) return (val / 1000).toFixed(1) + "K";
-        return Math.round(val).toString();
+        return Utils.formatNumber(val);
     }
 
     /**

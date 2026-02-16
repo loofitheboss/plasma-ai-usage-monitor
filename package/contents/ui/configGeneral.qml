@@ -8,7 +8,7 @@ KCM.SimpleKCM {
     id: generalPage
 
     property alias cfg_refreshInterval: refreshSlider.value
-    property alias cfg_compactDisplayMode: compactModeCombo.currentIndex
+    property string cfg_compactDisplayMode: plasmoid.configuration.compactDisplayMode
 
     property alias cfg_openaiRefreshInterval: openaiRefreshSlider.value
     property alias cfg_anthropicRefreshInterval: anthropicRefreshSlider.value
@@ -56,7 +56,7 @@ KCM.SimpleKCM {
                 i18n("Active providers count")
             ]
             currentIndex: {
-                switch (plasmoid.configuration.compactDisplayMode) {
+                switch (generalPage.cfg_compactDisplayMode) {
                     case "cost": return 1;
                     case "count": return 2;
                     default: return 0;
@@ -64,9 +64,9 @@ KCM.SimpleKCM {
             }
             onCurrentIndexChanged: {
                 switch (currentIndex) {
-                    case 1: plasmoid.configuration.compactDisplayMode = "cost"; break;
-                    case 2: plasmoid.configuration.compactDisplayMode = "count"; break;
-                    default: plasmoid.configuration.compactDisplayMode = "icon"; break;
+                    case 1: generalPage.cfg_compactDisplayMode = "cost"; break;
+                    case 2: generalPage.cfg_compactDisplayMode = "count"; break;
+                    default: generalPage.cfg_compactDisplayMode = "icon"; break;
                 }
             }
         }
@@ -219,7 +219,7 @@ KCM.SimpleKCM {
 
         QQC2.Label {
             Kirigami.FormData.label: i18n("Version:")
-            text: "2.0.0"
+            text: "2.3.0"
         }
 
         QQC2.Label {

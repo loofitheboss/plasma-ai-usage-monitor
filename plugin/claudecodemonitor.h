@@ -55,7 +55,7 @@ public:
     Q_INVOKABLE void detectActivity() override;
 
     // Browser sync
-    Q_INVOKABLE void syncFromBrowser(const QString &cookieDbPath, int browserType) override;
+    Q_INVOKABLE void syncFromBrowser(const QString &cookieHeader, int browserType) override;
 
 protected:
     UsagePeriod primaryPeriodType() const override { return FiveHour; }
@@ -70,11 +70,14 @@ private:
     QString claudeConfigDir() const;
     void fetchAccountInfo(const QString &cookieHeader);
     void fetchUsageData(const QString &orgUuid, const QString &cookieHeader);
-    void fetchBillingData(const QString &orgUuid, const QString &cookieHeader);
 
     QFileSystemWatcher *m_watcher;
     QDateTime m_lastKnownModification;
     QString m_orgUuid;
+
+    // Debounce timer to avoid counting rapid filesystem events as separate messages
+    QTimer *m_debounceTimer;
+    bool m_pendingIncrement = false;
 };
 
 #endif // CLAUDECODEMONITOR_H

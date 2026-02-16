@@ -1,5 +1,23 @@
 # AI Usage Monitor — KDE Plasma 6 Widget
 
+<p align="center">
+  <img src="assets/logo.png" alt="Plasma AI Monitor" width="200" />
+</p>
+
+<p align="center">
+  <strong>Monitor AI API usage, costs, rate limits, and budgets — right from your Plasma panel.</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#api-key-requirements">API Keys</a> •
+  <a href="#changelog">Changelog</a>
+</p>
+
+---
+
 A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, and costs across multiple providers. Sits in your panel as a compact icon with a colored status badge and expands into a detailed popup with per-provider stats, usage history charts, and budget tracking. Also tracks subscription-based AI coding tool usage limits for Claude Code, Codex CLI, and GitHub Copilot.
 
 **Supported providers:** OpenAI, Anthropic (Claude), Google Gemini, Mistral AI, DeepSeek, Groq, xAI (Grok)
@@ -85,6 +103,10 @@ Optionally sync real-time usage data by reading session cookies from your Firefo
 ## Screenshots
 
 *Screenshots coming soon — the widget is functional and can be added to any Plasma 6 panel or desktop.*
+
+<p align="center">
+  <img src="assets/logo.png" alt="Plasma AI Monitor Logo" width="128" />
+</p>
 
 ## Requirements
 
@@ -209,7 +231,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.2.0)
+├── CMakeLists.txt                  # Root build system (v2.7.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -253,6 +275,8 @@ plasma-ai-usage-monitor/
     ├── claudecodemonitor.{h,cpp}         # Claude Code usage monitor
     ├── codexclimonitor.{h,cpp}           # Codex CLI usage monitor
     ├── copilotmonitor.{h,cpp}            # GitHub Copilot usage monitor
+    ├── updatechecker.{h,cpp}             # GitHub release update checker
+    ├── browsercookieextractor.{h,cpp}    # Firefox cookie extraction for browser sync
     └── usagedatabase.{h,cpp}       # SQLite usage history persistence
 ```
 
@@ -341,6 +365,78 @@ The usage/costs endpoints require an Admin API key. Regular API keys will get a 
 
 **Usage history not recording:**
 Check that the History tab is enabled in configuration. Data is stored in `~/.local/share/plasma-ai-usage-monitor/usage_history.db`.
+
+## Changelog
+
+### v2.7.0 — Final Polish & Hardening
+- Fix reply-after-deleteLater in OpenAI costs and monthly costs handlers
+- Fix reads-after-deleteLater in OpenAICompatible 429 and success paths
+- Fix shared DB connection name crash when multiple UsageDatabase instances exist
+- Fix compactDisplayMode config alias writing integer index instead of string
+- Fix timer binding breakage — remove imperative handler that broke declarative bindings
+- Add retry with exponential backoff to OpenAI costs and monthly costs endpoints
+- Add write throttling to tool snapshot recording (matching provider snapshot throttle)
+- Add restrictive permissions (owner-only) on cookie temp file copies
+- Add retentionDays range clamping (1–365 days)
+- Fix textToCents returning NaN for invalid budget input (now defaults to 0)
+
+### v2.6.0 — Critical Bug Fixes
+- Fix m_activeReplies never populated — beginRefresh() now actually aborts in-flight requests
+- Fix retry logic sending GET instead of POST for chat completion retries
+- Fix pruneOldData() totalDeleted only counting last table (now sums all 3 DELETEs)
+- Fix double deleteLater() in OpenAICompatible and OpenAI retry paths
+- Add beginRefresh(), createRequest(), and generation counter to GoogleProvider
+- Add generation counter and createRequest() to DeepSeek fetchBalance()
+- Add stale-reply guard to CopilotMonitor fetchOrgMetrics()
+- Add trackReply() for registering in-flight replies across all providers
+- Add short-lived cookie DB cache in BrowserCookieExtractor (avoids triple reads)
+- Add i18n() wrapping to all user-visible error messages in providers
+- Split updatechecker.h into .h/.cpp (was header-only with full implementation)
+- Add 30s timeout to UpdateChecker GitHub API request
+
+### v2.5.0 — Performance, Reliability & Architecture
+- Add centralized request builder with 30s timeout on all API requests
+- Add generation counter for request cancellation on re-refresh
+- Add retry with exponential backoff for transient HTTP errors (429/500/502/503)
+- Add Retry-After header parsing for 429 rate limit responses
+- Separate budgetWarning and budgetExceeded signals with notification dedup
+- Add HTTPS validation warning for custom base URLs
+- Centralize rate limit header parsing in ProviderBackend base class
+- Remove duplicate QNetworkAccessManager in CopilotMonitor
+- Add DB write throttling (60s per provider, skip if data unchanged)
+- Wrap pruneOldData() in SQLite transaction for atomic multi-table cleanup
+- Add eager database init via UsageDatabase::init() to avoid first-write stall
+
+### v2.4.0 — Feature Improvements & UI Enhancements
+- Add model name badge in ProviderCard header
+- Add subscription tool warning/critical indicators in panel badge
+- Fix rate limit bars to show "used" instead of "remaining" for visual consistency
+- Add All/Day/Month toggle to CostSummaryCard with per-provider breakdown
+- Add hover tooltips with crosshair to UsageChart canvas
+- Fix UsageChart Y-axis to start at zero for accurate visual scale
+- Add Bézier smooth curve interpolation to UsageChart
+- Refactor configBudget.qml from copy-paste to data-driven Repeater
+
+### v2.3.0 — Browser Sync
+- Add browser cookie sync for real-time usage data from Claude.ai and ChatGPT
+- Add BrowserCookieExtractor for reading Firefox session cookies (read-only)
+- Full dashboard view: session info, extra usage, tertiary limits, credits
+
+### v2.2.0 — Subscription Tool Tracking
+- Add subscription tool tracking for Claude Code, Codex CLI, and GitHub Copilot
+- Add SubscriptionToolBackend abstract base class with rolling time windows
+- Add SubscriptionToolCard.qml with progress bars and time-until-reset
+
+### v2.1.0 — Architecture Overhaul
+- Add OpenAICompatibleProvider base class, dedup Mistral/Groq/xAI/DeepSeek
+- Add token-based cost estimation with per-model pricing (~30 models)
+- Add per-provider refresh timers, collapsible cards, accessibility annotations
+- Data-driven provider cards via Repeater
+
+### v2.0.0 — Multi-Provider & History
+- Add Mistral AI, DeepSeek, Groq, and xAI/Grok providers
+- Add SQLite-based usage history with chart visualization
+- Add budget management with daily/monthly limits per provider
 
 ## License
 

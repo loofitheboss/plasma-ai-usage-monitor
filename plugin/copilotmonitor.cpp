@@ -10,7 +10,6 @@
 
 CopilotMonitor::CopilotMonitor(QObject *parent)
     : SubscriptionToolBackend(parent)
-    , m_networkManager(new QNetworkAccessManager(this))
 {
 }
 
@@ -38,11 +37,20 @@ void CopilotMonitor::checkToolInstalled()
         }
     }
 
-    // Check for Neovim Copilot plugin
-    QString nvimCopilot = QDir::homePath() + QStringLiteral("/.local/share/nvim");
-    if (QDir(nvimCopilot).exists()) {
-        // Basic check for nvim installation that might have copilot
-        found = found || QDir(nvimCopilot).exists();
+    // Check for Neovim Copilot plugin (specific plugin directories, not just nvim)
+    QString nvimDataDir = QDir::homePath() + QStringLiteral("/.local/share/nvim");
+    QStringList copilotPluginPaths = {
+        nvimDataDir + QStringLiteral("/plugged/copilot.vim"),
+        nvimDataDir + QStringLiteral("/lazy/copilot.lua"),
+        nvimDataDir + QStringLiteral("/lazy/copilot.vim"),
+        nvimDataDir + QStringLiteral("/site/pack/packer/start/copilot.vim"),
+        nvimDataDir + QStringLiteral("/site/pack/packer/start/copilot.lua"),
+    };
+    for (const auto &pluginPath : copilotPluginPaths) {
+        if (QDir(pluginPath).exists()) {
+            found = true;
+            break;
+        }
     }
 
     setInstalled(found);
@@ -87,16 +95,21 @@ void CopilotMonitor::fetchOrgMetrics()
 {
     if (m_githubToken.isEmpty() || m_orgName.isEmpty()) return;
 
+    m_fetchGeneration++;
+    int gen = m_fetchGeneration;
+
     // GET /orgs/{org}/copilot/billing
     QUrl url(QStringLiteral("https://api.github.com/orgs/%1/copilot/billing").arg(m_orgName));
 
     QNetworkRequest request(url);
+    request.setTransferTimeout(30000);
     request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(m_githubToken).toUtf8());
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
 
-    QNetworkReply *reply = m_networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    QNetworkReply *reply = networkManager()->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (gen != m_fetchGeneration) { reply->deleteLater(); return; }
         onBillingReply(reply);
     });
 }

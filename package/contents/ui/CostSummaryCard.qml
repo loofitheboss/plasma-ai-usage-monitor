@@ -41,6 +41,9 @@ ColumnLayout {
 
     spacing: 0
 
+    // View mode: 0=cumulative, 1=daily, 2=monthly
+    property int costViewMode: 0
+
     Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: costContent.implicitHeight + Kirigami.Units.largeSpacing * 2
@@ -65,18 +68,49 @@ ColumnLayout {
 
                 PlasmaExtras.Heading {
                     level: 4
-                    text: i18n("Total Cost")
+                    text: costCard.costViewMode === 0 ? i18n("Total Cost")
+                        : costCard.costViewMode === 1 ? i18n("Today's Cost")
+                        : i18n("Monthly Cost")
                 }
 
                 Item { Layout.fillWidth: true }
 
+                // View mode toggle buttons
+                Row {
+                    spacing: 2
+
+                    Repeater {
+                        model: [
+                            { label: i18n("All"), mode: 0 },
+                            { label: i18n("Day"), mode: 1 },
+                            { label: i18n("Month"), mode: 2 }
+                        ]
+
+                        PlasmaComponents.ToolButton {
+                            text: modelData.label
+                            checked: costCard.costViewMode === modelData.mode
+                            onClicked: costCard.costViewMode = modelData.mode
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            implicitHeight: Kirigami.Units.gridUnit * 1.2
+                        }
+                    }
+                }
+
                 PlasmaComponents.Label {
-                    text: "$" + costCard.totalCost.toFixed(4)
+                    text: {
+                        var val = costCard.costViewMode === 0 ? costCard.totalCost
+                                : costCard.costViewMode === 1 ? costCard.totalDailyCost
+                                : costCard.totalMonthlyCost;
+                        return "$" + val.toFixed(val < 1 ? 4 : 2);
+                    }
                     font.bold: true
                     font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.3
                     color: {
-                        if (costCard.totalCost > 50) return Kirigami.Theme.negativeTextColor;
-                        if (costCard.totalCost > 20) return Kirigami.Theme.neutralTextColor;
+                        var cost = costCard.costViewMode === 0 ? costCard.totalCost
+                                 : costCard.costViewMode === 1 ? costCard.totalDailyCost
+                                 : costCard.totalMonthlyCost;
+                        if (cost > 50) return Kirigami.Theme.negativeTextColor;
+                        if (cost > 20) return Kirigami.Theme.neutralTextColor;
                         return Kirigami.Theme.textColor;
                     }
                 }
@@ -88,7 +122,13 @@ ColumnLayout {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    visible: modelData.enabled && modelData.backend && modelData.backend.connected && modelData.backend.cost > 0
+                    readonly property double providerCost: {
+                        if (!modelData.backend) return 0;
+                        if (costCard.costViewMode === 1) return modelData.backend.dailyCost ?? 0;
+                        if (costCard.costViewMode === 2) return modelData.backend.monthlyCost ?? 0;
+                        return modelData.backend.cost ?? 0;
+                    }
+                    visible: modelData.enabled && modelData.backend && modelData.backend.connected && providerCost > 0
                     spacing: Kirigami.Units.smallSpacing
 
                     Rectangle {
@@ -99,6 +139,8 @@ ColumnLayout {
                     }
 
                     PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
                         text: modelData.name
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                         opacity: 0.7
@@ -107,35 +149,9 @@ ColumnLayout {
                     Item { Layout.fillWidth: true }
 
                     PlasmaComponents.Label {
-                        text: "$" + (modelData.backend?.cost ?? 0).toFixed(4)
+                        text: "$" + parent.providerCost.toFixed(parent.providerCost < 1 ? 4 : 2)
                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                     }
-                }
-            }
-
-            // Daily / Monthly summary
-            Kirigami.Separator {
-                Layout.fillWidth: true
-                visible: costCard.totalDailyCost > 0 || costCard.totalMonthlyCost > 0
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                visible: costCard.totalDailyCost > 0 || costCard.totalMonthlyCost > 0
-                spacing: Kirigami.Units.largeSpacing
-
-                PlasmaComponents.Label {
-                    visible: costCard.totalDailyCost > 0
-                    text: i18n("Today: $%1", costCard.totalDailyCost.toFixed(2))
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    opacity: 0.7
-                }
-
-                PlasmaComponents.Label {
-                    visible: costCard.totalMonthlyCost > 0
-                    text: i18n("This month: $%1", costCard.totalMonthlyCost.toFixed(2))
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    opacity: 0.7
                 }
             }
         }

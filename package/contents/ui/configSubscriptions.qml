@@ -131,6 +131,8 @@ KCM.SimpleKCM {
 
             // Detection status
             QQC2.Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: claudeDetector.installed
                     ? "✓ " + i18n("Detected")
                     : "✗ " + i18n("Not found")
@@ -145,6 +147,7 @@ KCM.SimpleKCM {
             id: claudeCodePlanCombo
             Kirigami.FormData.label: i18n("Plan:")
             enabled: claudeCodeSwitch.checked
+            Layout.fillWidth: true
             model: claudeDetector.availablePlans()
             currentIndex: plasmoid.configuration.claudeCodePlan
             onCurrentIndexChanged: {
@@ -226,6 +229,8 @@ KCM.SimpleKCM {
             }
 
             QQC2.Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: codexDetector.installed
                     ? "✓ " + i18n("Detected")
                     : "✗ " + i18n("Not found")
@@ -240,6 +245,7 @@ KCM.SimpleKCM {
             id: codexPlanCombo
             Kirigami.FormData.label: i18n("Plan:")
             enabled: codexSwitch.checked
+            Layout.fillWidth: true
             model: codexDetector.availablePlans()
             currentIndex: plasmoid.configuration.codexPlan
             onCurrentIndexChanged: {
@@ -309,6 +315,8 @@ KCM.SimpleKCM {
             }
 
             QQC2.Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: copilotDetector.installed
                     ? "✓ " + i18n("Detected")
                     : "✗ " + i18n("Not found")
@@ -323,6 +331,7 @@ KCM.SimpleKCM {
             id: copilotPlanCombo
             Kirigami.FormData.label: i18n("Plan:")
             enabled: copilotSwitch.checked
+            Layout.fillWidth: true
             model: copilotDetector.availablePlans()
             currentIndex: plasmoid.configuration.copilotPlan
             onCurrentIndexChanged: {
@@ -485,6 +494,8 @@ KCM.SimpleKCM {
             }
 
             QQC2.Label {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: syncDetector.hasFirefoxProfile
                     ? "✓ " + i18n("Firefox profile found")
                     : "✗ " + i18n("No Firefox profile")
@@ -499,7 +510,8 @@ KCM.SimpleKCM {
             id: browserSyncBrowserCombo
             Kirigami.FormData.label: i18n("Browser:")
             enabled: browserSyncSwitch.checked
-            model: [i18n("Firefox"), i18n("Chrome (not supported)"), i18n("Chromium (not supported)")]
+            Layout.fillWidth: true
+            model: [i18n("Firefox"), i18n("Chrome (not yet supported)"), i18n("Chromium (not yet supported)")]
             currentIndex: plasmoid.configuration.browserSyncBrowser
         }
 
@@ -528,6 +540,8 @@ KCM.SimpleKCM {
                 text: i18n("(minimum 60 seconds)")
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
                 opacity: 0.5
+                elide: Text.ElideRight
+                Layout.fillWidth: true
             }
         }
 
@@ -542,7 +556,13 @@ KCM.SimpleKCM {
                 icon.name: "network-connect"
                 onClicked: {
                     var result = syncDetector.testConnection("claude");
-                    claudeTestLabel.text = result;
+                    claudeTestLabel.text = result === "connected" ? i18n("Connected")
+                                         : result === "expired" ? i18n("Session expired")
+                                         : result === "not_found" ? i18n("No cookies found")
+                                         : result;
+                    claudeTestLabel.color = result === "connected" ? Kirigami.Theme.positiveTextColor
+                                          : result === "expired" ? Kirigami.Theme.neutralTextColor
+                                          : Kirigami.Theme.negativeTextColor;
                     claudeTestLabel.visible = true;
                 }
             }
@@ -550,10 +570,13 @@ KCM.SimpleKCM {
                 id: claudeTestLabel
                 visible: false
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
+                Layout.fillWidth: true
+                elide: Text.ElideRight
             }
         }
 
         RowLayout {
+            Kirigami.FormData.label: " "
             visible: browserSyncSwitch.checked
             spacing: Kirigami.Units.smallSpacing
 
@@ -562,7 +585,13 @@ KCM.SimpleKCM {
                 icon.name: "network-connect"
                 onClicked: {
                     var result = syncDetector.testConnection("chatgpt");
-                    chatgptTestLabel.text = result;
+                    chatgptTestLabel.text = result === "connected" ? i18n("Connected")
+                                          : result === "expired" ? i18n("Session expired")
+                                          : result === "not_found" ? i18n("No cookies found")
+                                          : result;
+                    chatgptTestLabel.color = result === "connected" ? Kirigami.Theme.positiveTextColor
+                                           : result === "expired" ? Kirigami.Theme.neutralTextColor
+                                           : Kirigami.Theme.negativeTextColor;
                     chatgptTestLabel.visible = true;
                 }
             }
@@ -570,6 +599,8 @@ KCM.SimpleKCM {
                 id: chatgptTestLabel
                 visible: false
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
+                Layout.fillWidth: true
+                elide: Text.ElideRight
             }
         }
     }

@@ -4,6 +4,7 @@ import QtQuick.Controls as QQC2
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.kirigami as Kirigami
+import "Utils.js" as Utils
 
 ColumnLayout {
     id: card
@@ -53,6 +54,20 @@ ColumnLayout {
             NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
         }
 
+        // Accent stripe on the left edge
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 3
+            radius: Kirigami.Units.cornerRadius
+            color: card.backend?.connected ? card.providerColor : "transparent"
+            opacity: card.backend?.connected ? 0.6 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: 300 }
+            }
+        }
+
         clip: true
 
         ColumnLayout {
@@ -93,7 +108,27 @@ ColumnLayout {
                     Layout.fillWidth: true
                 }
 
-                // Error count badge
+                // Model badge
+                Rectangle {
+                    visible: (card.backend?.model ?? "") !== ""
+                    implicitWidth: modelLabel.implicitWidth + Kirigami.Units.smallSpacing * 2
+                    implicitHeight: modelLabel.implicitHeight + 2
+                    radius: 3
+                    color: Qt.alpha(card.providerColor, 0.15)
+
+                    PlasmaComponents.Label {
+                        id: modelLabel
+                        anchors.centerIn: parent
+                        text: card.backend?.model ?? ""
+                        font.pointSize: Kirigami.Theme.smallFont.pointSize * 0.9
+                        color: Qt.alpha(Kirigami.Theme.textColor, 0.7)
+                        elide: Text.ElideRight
+                    }
+
+                    PlasmaComponents.ToolTip {
+                        text: i18n("Model: %1", card.backend?.model ?? "")
+                    }
+                }
                 Rectangle {
                     visible: (card.backend?.errorCount ?? 0) > 0
                     width: errorCountLabel.implicitWidth + Kirigami.Units.smallSpacing * 2
@@ -113,6 +148,7 @@ ColumnLayout {
                 // Connection status
                 PlasmaComponents.Label {
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    elide: Text.ElideRight
                     text: {
                         if (!card.backend) return i18n("N/A");
                         if (card.backend.loading) return i18n("Loading...");
@@ -358,6 +394,10 @@ ColumnLayout {
                         to: card.backend?.dailyBudget ?? 1
                         value: Math.min(card.backend?.dailyCost ?? 0, card.backend?.dailyBudget ?? 1)
 
+                        Accessible.name: i18n("Daily budget: %1 of %2 used",
+                            "$" + (card.backend?.dailyCost ?? 0).toFixed(2),
+                            "$" + (card.backend?.dailyBudget ?? 0).toFixed(2))
+
                         background: Rectangle {
                             implicitHeight: 4
                             radius: 2
@@ -473,7 +513,8 @@ ColumnLayout {
                         }
                         Item { Layout.fillWidth: true }
                         PlasmaComponents.Label {
-                            text: (card.backend?.rateLimitRequestsRemaining ?? 0) + " / " + (card.backend?.rateLimitRequests ?? 0)
+                            readonly property int used: (card.backend?.rateLimitRequests ?? 0) - (card.backend?.rateLimitRequestsRemaining ?? 0)
+                            text: used + " / " + (card.backend?.rateLimitRequests ?? 0) + " " + i18n("used")
                             font.pointSize: Kirigami.Theme.smallFont.pointSize
                         }
                     }
@@ -483,7 +524,7 @@ ColumnLayout {
                         Layout.preferredHeight: 6
                         from: 0
                         to: card.backend?.rateLimitRequests ?? 1
-                        value: card.backend?.rateLimitRequestsRemaining ?? 0
+                        value: (card.backend?.rateLimitRequests ?? 0) - (card.backend?.rateLimitRequestsRemaining ?? 0)
 
                         background: Rectangle {
                             implicitHeight: 6
@@ -525,7 +566,8 @@ ColumnLayout {
                         }
                         Item { Layout.fillWidth: true }
                         PlasmaComponents.Label {
-                            text: formatNumber(card.backend?.rateLimitTokensRemaining ?? 0) + " / " + formatNumber(card.backend?.rateLimitTokens ?? 0)
+                            readonly property int used: (card.backend?.rateLimitTokens ?? 0) - (card.backend?.rateLimitTokensRemaining ?? 0)
+                            text: formatNumber(used) + " / " + formatNumber(card.backend?.rateLimitTokens ?? 0) + " " + i18n("used")
                             font.pointSize: Kirigami.Theme.smallFont.pointSize
                         }
                     }
@@ -535,7 +577,7 @@ ColumnLayout {
                         Layout.preferredHeight: 6
                         from: 0
                         to: card.backend?.rateLimitTokens ?? 1
-                        value: card.backend?.rateLimitTokensRemaining ?? 0
+                        value: (card.backend?.rateLimitTokens ?? 0) - (card.backend?.rateLimitTokensRemaining ?? 0)
 
                         background: Rectangle {
                             implicitHeight: 6
@@ -595,34 +637,18 @@ ColumnLayout {
     // ── Helper functions ──
 
     function rateLimitColor(remaining, total) {
-        if (total <= 0) return Kirigami.Theme.disabledTextColor;
-        var ratio = remaining / total;
-        if (ratio > 0.5) return Kirigami.Theme.positiveTextColor;
-        if (ratio > 0.2) return Kirigami.Theme.neutralTextColor;
-        return Kirigami.Theme.negativeTextColor;
+        return Utils.rateLimitColor(remaining, total, Kirigami.Theme);
     }
 
     function budgetColor(spent, budget) {
-        if (budget <= 0) return Kirigami.Theme.disabledTextColor;
-        var ratio = spent / budget;
-        if (ratio < 0.5) return Kirigami.Theme.positiveTextColor;
-        if (ratio < 0.8) return Kirigami.Theme.neutralTextColor;
-        return Kirigami.Theme.negativeTextColor;
+        return Utils.budgetColor(spent, budget, Kirigami.Theme);
     }
 
     function formatNumber(n) {
-        if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-        if (n >= 1000) return (n / 1000).toFixed(1) + "K";
-        return n.toString();
+        return Utils.formatNumber(n);
     }
 
     function formatRelativeTime(dateTime) {
-        var now = new Date();
-        var diff = Math.floor((now - dateTime) / 1000);
-        if (diff < 5) return i18n("just now");
-        if (diff < 60) return i18n("%1s ago", diff);
-        if (diff < 3600) return i18n("%1m ago", Math.floor(diff / 60));
-        if (diff < 86400) return i18n("%1h ago", Math.floor(diff / 3600));
-        return Qt.formatTime(dateTime, "hh:mm:ss");
+        return Utils.formatRelativeTime(dateTime);
     }
 }

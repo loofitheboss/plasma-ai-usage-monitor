@@ -1,4 +1,5 @@
 #include "openaiprovider.h"
+#include <KLocalizedString>
 #include <QNetworkRequest>
 #include <QUrlQuery>
 #include <QDateTime>
@@ -31,11 +32,12 @@ void OpenAIProvider::setModel(const QString &model)
 void OpenAIProvider::refresh()
 {
     if (!hasApiKey()) {
-        setError(QStringLiteral("No API key configured"));
+        setError(i18n("No API key configured"));
         setConnected(false);
         return;
     }
 
+    beginRefresh();
     setLoading(true);
     clearError();
     m_pendingRequests = 0;
@@ -67,13 +69,14 @@ void OpenAIProvider::fetchUsage()
 
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
+    QNetworkRequest request = createRequest(url);
 
     m_pendingRequests++;
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onUsageReply(reply);
     });
 }
@@ -95,62 +98,56 @@ void OpenAIProvider::fetchCosts()
 
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
+    QNetworkRequest request = createRequest(url);
 
     m_pendingRequests++;
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onCostsReply(reply);
     });
 }
 
 void OpenAIProvider::onUsageReply(QNetworkReply *reply)
 {
-    reply->deleteLater();
     m_pendingRequests--;
 
     if (reply->error() != QNetworkReply::NoError) {
         int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        // Retry transient errors (retryRequest takes ownership of reply)
+        if (isRetryableStatus(httpStatus)) {
+            m_pendingRequests++; // re-increment since retry is pending
+            retryRequest(reply, reply->url(), QByteArray(),
+                         [this](QNetworkReply *r) { onUsageReply(r); });
+            return;
+        }
+
+        reply->deleteLater();
+
         if (httpStatus == 401 || httpStatus == 403) {
-            setError(QStringLiteral("Authentication failed. Ensure you're using an Admin API key."));
+            setError(i18n("Authentication failed. Ensure you're using an Admin API key."));
         } else {
-            setError(QStringLiteral("Usage API error: %1 (HTTP %2)")
-                         .arg(reply->errorString())
-                         .arg(httpStatus));
+            setError(i18n("Usage API error: %1 (HTTP %2)",
+                         reply->errorString(),
+                         QString::number(httpStatus)));
         }
         checkAllDone();
         return;
     }
 
+    reply->deleteLater();
+
     // Parse rate limit headers from the response
-    auto readHeader = [&](const char *name) -> int {
-        QByteArray val = reply->rawHeader(name);
-        return val.isEmpty() ? 0 : val.toInt();
-    };
-
-    int rlRequests = readHeader("x-ratelimit-limit-requests");
-    int rlTokens = readHeader("x-ratelimit-limit-tokens");
-    int rlReqRemaining = readHeader("x-ratelimit-remaining-requests");
-    int rlTokRemaining = readHeader("x-ratelimit-remaining-tokens");
-    QString rlResetReq = QString::fromUtf8(reply->rawHeader("x-ratelimit-reset-requests"));
-
-    if (rlRequests > 0) {
-        setRateLimitRequests(rlRequests);
-        setRateLimitRequestsRemaining(rlReqRemaining); // Can be 0 when fully depleted
-    }
-    if (rlTokens > 0) {
-        setRateLimitTokens(rlTokens);
-        setRateLimitTokensRemaining(rlTokRemaining); // Can be 0 when fully depleted
-    }
-    if (!rlResetReq.isEmpty()) setRateLimitResetTime(rlResetReq);
+    parseRateLimitHeaders(reply);
 
     // Parse JSON body
     QByteArray data = reply->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull()) {
-        setError(QStringLiteral("Failed to parse usage response"));
+        setError(i18n("Failed to parse usage response"));
         checkAllDone();
         return;
     }
@@ -182,17 +179,28 @@ void OpenAIProvider::onUsageReply(QNetworkReply *reply)
 
 void OpenAIProvider::onCostsReply(QNetworkReply *reply)
 {
-    reply->deleteLater();
     m_pendingRequests--;
 
     if (reply->error() != QNetworkReply::NoError) {
+        int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        // Retry transient errors (retryRequest takes ownership of reply)
+        if (isRetryableStatus(httpStatus)) {
+            m_pendingRequests++; // re-increment since retry is pending
+            retryRequest(reply, reply->url(), QByteArray(),
+                         [this](QNetworkReply *r) { onCostsReply(r); });
+            return;
+        }
+
         // Non-fatal: usage data may still be available
         qWarning() << "AI Usage Monitor: OpenAI costs API error:" << reply->errorString();
+        reply->deleteLater();
         checkAllDone();
         return;
     }
 
     QByteArray data = reply->readAll();
+    reply->deleteLater();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull()) {
         checkAllDone();
@@ -238,30 +246,42 @@ void OpenAIProvider::fetchMonthlyCosts()
 
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
+    QNetworkRequest request = createRequest(url);
 
     m_pendingRequests++;
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onMonthlyCostsReply(reply);
     });
 }
 
 void OpenAIProvider::onMonthlyCostsReply(QNetworkReply *reply)
 {
-    reply->deleteLater();
     m_pendingRequests--;
 
     if (reply->error() != QNetworkReply::NoError) {
+        int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        // Retry transient errors (retryRequest takes ownership of reply)
+        if (isRetryableStatus(httpStatus)) {
+            m_pendingRequests++; // re-increment since retry is pending
+            retryRequest(reply, reply->url(), QByteArray(),
+                         [this](QNetworkReply *r) { onMonthlyCostsReply(r); });
+            return;
+        }
+
         // Non-fatal: daily cost data may still be available
         qWarning() << "AI Usage Monitor: OpenAI monthly costs API error:" << reply->errorString();
+        reply->deleteLater();
         checkAllDone();
         return;
     }
 
     QByteArray data = reply->readAll();
+    reply->deleteLater();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull()) {
         checkAllDone();

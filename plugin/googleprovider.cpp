@@ -1,4 +1,5 @@
 #include "googleprovider.h"
+#include <KLocalizedString>
 #include <QNetworkRequest>
 #include <QUrlQuery>
 #include <QDebug>
@@ -36,11 +37,12 @@ void GoogleProvider::setTier(const QString &tier)
 void GoogleProvider::refresh()
 {
     if (!hasApiKey()) {
-        setError(QStringLiteral("No API key configured"));
+        setError(i18n("No API key configured"));
         setConnected(false);
         return;
     }
 
+    beginRefresh();
     setLoading(true);
     clearError();
     fetchStatus();
@@ -56,8 +58,9 @@ void GoogleProvider::fetchStatus()
     query.addQueryItem(QStringLiteral("key"), apiKey());
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Content-Type", "application/json");
+    // Use createRequest for timeout, then clear Bearer auth (Google uses query-param auth)
+    QNetworkRequest request = createRequest(url);
+    request.setRawHeader("Authorization", QByteArray());
 
     // Minimal payload
     QJsonObject payload;
@@ -73,8 +76,11 @@ void GoogleProvider::fetchStatus()
 
     QByteArray body = QJsonDocument(payload).toJson(QJsonDocument::Compact);
 
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->post(request, body);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onCountTokensReply(reply);
     });
 }
@@ -86,16 +92,17 @@ void GoogleProvider::onCountTokensReply(QNetworkReply *reply)
     if (reply->error() != QNetworkReply::NoError) {
         int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (httpStatus == 400) {
-            setError(QStringLiteral("Invalid API key or model name"));
+            setError(i18n("Invalid API key or model name"));
         } else if (httpStatus == 429) {
-            setError(QStringLiteral("Rate limited"));
+            setError(i18n("Rate limited"));
         } else {
-            setError(QStringLiteral("API error: %1 (HTTP %2)")
-                         .arg(reply->errorString())
-                         .arg(httpStatus));
+            setError(i18n("API error: %1 (HTTP %2)",
+                         reply->errorString(),
+                         QString::number(httpStatus)));
         }
         setLoading(false);
         setConnected(false);
+        updateLastRefreshed();
         Q_EMIT dataUpdated();
         return;
     }

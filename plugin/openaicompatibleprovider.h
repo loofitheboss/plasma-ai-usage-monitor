@@ -57,6 +57,7 @@ private:
 
     QString m_model;
     int m_pendingRequests = 0;
+    QByteArray m_lastRequestBody; // stored for retry support
 
     // Session-level token tracking (accumulated across refreshes within one session)
     qint64 m_sessionInputTokens = 0;

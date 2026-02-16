@@ -7,6 +7,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <QSqlDatabase>
+#include <QHash>
+#include <atomic>
 
 /**
  * SQLite database for persisting AI usage history.
@@ -97,6 +99,20 @@ public:
     Q_INVOKABLE QStringList getProviders() const;
 
     /**
+     * Query subscription tool usage snapshots within a time range.
+     * Returns a list of QVariantMap with keys: timestamp, usageCount,
+     * usageLimit, periodType, planTier, limitReached, percentUsed.
+     */
+    Q_INVOKABLE QVariantList getToolSnapshots(const QString &toolName,
+                                               const QDateTime &from,
+                                               const QDateTime &to) const;
+
+    /**
+     * Get all subscription tool names that have recorded data.
+     */
+    Q_INVOKABLE QStringList getToolNames() const;
+
+    /**
      * Export data as CSV for a provider within a time range.
      */
     Q_INVOKABLE QString exportCsv(const QString &provider,
@@ -116,6 +132,12 @@ public:
     Q_INVOKABLE void pruneOldData();
 
     /**
+     * Eagerly initialize the database.
+     * Call early (e.g., Component.onCompleted) to avoid blocking on first write.
+     */
+    Q_INVOKABLE void init();
+
+    /**
      * Get the total database size in bytes.
      */
     Q_INVOKABLE qint64 databaseSize() const;
@@ -129,9 +151,17 @@ private:
     void createTables();
 
     QSqlDatabase m_db;
+    QString m_connectionName;
     bool m_enabled = true;
     int m_retentionDays = 90;
     bool m_initialized = false;
+
+    static std::atomic<int> s_instanceCounter;
+
+    // Write throttling: minimum 60 seconds between writes per provider
+    static constexpr int WRITE_THROTTLE_SECS = 60;
+    QHash<QString, qint64> m_lastWriteTime; // provider -> epoch seconds
+    QHash<QString, double> m_lastWrittenCost; // provider -> last cost to detect changes
 };
 
 #endif // USAGEDATABASE_H

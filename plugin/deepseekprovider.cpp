@@ -1,4 +1,5 @@
 #include "deepseekprovider.h"
+#include <KLocalizedString>
 #include <QNetworkRequest>
 #include <QDebug>
 
@@ -18,7 +19,7 @@ double DeepSeekProvider::balance() const { return m_balance; }
 void DeepSeekProvider::refresh()
 {
     if (!hasApiKey()) {
-        setError(QStringLiteral("No API key configured"));
+        setError(i18n("No API key configured"));
         setConnected(false);
         return;
     }
@@ -36,13 +37,14 @@ void DeepSeekProvider::fetchBalance()
     // DeepSeek has a balance endpoint
     QUrl url(QStringLiteral("%1/user/balance").arg(effectiveBaseUrl(defaultBaseUrl())));
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", QStringLiteral("Bearer %1").arg(apiKey()).toUtf8());
-    request.setRawHeader("Content-Type", "application/json");
+    QNetworkRequest request = createRequest(url);
 
     addPendingRequest();
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onBalanceReply(reply);
     });
 }

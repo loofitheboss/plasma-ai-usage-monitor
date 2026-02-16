@@ -21,6 +21,12 @@ MouseArea {
                 if (usedPercent >= plasmoid.configuration.warningThreshold) return true;
             }
         }
+        // Also check subscription tools
+        var tools = root.allSubscriptionTools ?? [];
+        for (var j = 0; j < tools.length; j++) {
+            var t = tools[j];
+            if (t && t.enabled && t.monitor && t.monitor.percentUsed >= 80) return true;
+        }
         return false;
     }
     readonly property bool hasCritical: {
@@ -30,6 +36,12 @@ MouseArea {
                 var usedPercent = ((p.backend.rateLimitRequests - p.backend.rateLimitRequestsRemaining) / p.backend.rateLimitRequests) * 100;
                 if (usedPercent >= plasmoid.configuration.criticalThreshold) return true;
             }
+        }
+        // Also check subscription tools
+        var tools = root.allSubscriptionTools ?? [];
+        for (var j = 0; j < tools.length; j++) {
+            var t = tools[j];
+            if (t && t.enabled && t.monitor && (t.monitor.limitReached || t.monitor.percentUsed >= 95)) return true;
         }
         return false;
     }

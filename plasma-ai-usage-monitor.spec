@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        2.3.0
+Version:        2.7.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -58,6 +58,58 @@ Features:
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
 
 %changelog
+* Mon Feb 17 2026 Loofi <loofi@github.com> - 2.7.0-1
+- Fix reply-after-deleteLater in OpenAI onCostsReply and onMonthlyCostsReply
+- Fix reads-after-deleteLater in OpenAICompatible 429 and success paths
+- Fix shared DB connection name crash when multiple UsageDatabase instances exist
+- Fix compactDisplayMode config alias writing integer index instead of string
+- Fix timer binding breakage — remove imperative handler that broke declarative bindings
+- Add retry with exponential backoff to OpenAI costs and monthly costs endpoints
+- Add write throttling to tool snapshot recording (matching provider snapshot throttle)
+- Add restrictive permissions (owner-only) on cookie temp file copies
+- Add retentionDays range clamping (1–365 days)
+- Fix textToCents returning NaN for invalid budget input (now defaults to 0)
+
+* Mon Feb 16 2026 Loofi <loofi@github.com> - 2.6.0-1
+- Fix m_activeReplies never populated — beginRefresh() now actually aborts in-flight requests
+- Fix retry logic sending GET instead of POST for chat completion retries
+- Fix pruneOldData() totalDeleted only counting last table (now sums all 3 DELETEs)
+- Fix double deleteLater() in OpenAICompatible and OpenAI retry paths
+- Add beginRefresh(), createRequest(), and generation counter to GoogleProvider
+- Add generation counter and createRequest() to DeepSeek fetchBalance()
+- Add stale-reply guard to CopilotMonitor fetchOrgMetrics()
+- Add trackReply() for registering in-flight replies across all providers
+- Add short-lived cookie DB cache in BrowserCookieExtractor (avoids triple reads)
+- Add i18n() wrapping to all user-visible error messages in providers
+- Split updatechecker.h into .h/.cpp (was header-only with full implementation)
+- Add 30s timeout to UpdateChecker GitHub API request
+- Add updateLastRefreshed() to Google error path (was showing stale time on failure)
+
+* Mon Feb 16 2026 Loofi <loofi@github.com> - 2.5.0-1
+- Add centralized request builder with 30s timeout on all API requests
+- Add generation counter for request cancellation on re-refresh
+- Add retry with exponential backoff for transient HTTP errors (429/500/502/503)
+- Add Retry-After header parsing for 429 rate limit responses
+- Separate budgetWarning and budgetExceeded signals with notification dedup
+- Add HTTPS validation warning for custom base URLs
+- Centralize rate limit header parsing in ProviderBackend base class
+- Remove duplicate QNetworkAccessManager in CopilotMonitor
+- Add DB write throttling (60s per provider, skip if data unchanged)
+- Wrap pruneOldData() in SQLite transaction for atomic multi-table cleanup
+- Add eager database init via UsageDatabase::init() to avoid first-write stall
+- Optimize UsageChart hover - only repaint when hoveredIndex changes
+
+* Mon Feb 17 2026 Loofi <loofi@github.com> - 2.4.0-1
+- Add model name badge in ProviderCard header
+- Add subscription tool warning/critical indicators in panel badge
+- Fix rate limit bars to show "used" instead of "remaining" for visual consistency
+- Add All/Day/Month toggle to CostSummaryCard with per-provider breakdown
+- Add hover tooltips with crosshair to UsageChart canvas
+- Fix UsageChart Y-axis to start at zero for accurate visual scale
+- Add Bézier smooth curve interpolation to UsageChart
+- Refactor configBudget.qml from copy-paste to data-driven Repeater (−160 lines)
+- Add getToolSnapshots() and getToolNames() to UsageDatabase for tool history queries
+
 * Sun Feb 16 2026 Loofi <loofi@github.com> - 2.3.0-1
 - Add browser cookie sync for real-time usage data from Claude.ai and ChatGPT
 - Add BrowserCookieExtractor for reading Firefox session cookies (read-only)

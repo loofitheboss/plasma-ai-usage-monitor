@@ -68,6 +68,7 @@ public:
     QString tertiaryPeriodLabel() const override { return QStringLiteral("Code review"); }
     bool hasCredits() const override { return m_hasCreditsData; }
     bool hasSecondaryLimit() const override { return true; }
+    QString secondaryPeriodLabel() const override { return QStringLiteral("Weekly"); }
 
 protected:
     UsagePeriod primaryPeriodType() const override { return FiveHour; }
@@ -85,6 +86,10 @@ private:
     QDateTime m_lastKnownModification;
     bool m_hasTertiary = false;
     bool m_hasCreditsData = false;
+
+    // Debounce timer to avoid counting rapid filesystem events as separate messages
+    QTimer *m_debounceTimer;
+    bool m_pendingIncrement = false;
 };
 
 #endif // CODEXCLIMONITOR_H

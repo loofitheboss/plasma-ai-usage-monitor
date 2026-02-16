@@ -8,11 +8,23 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
+#include <KLocalizedString>
 
 CodexCliMonitor::CodexCliMonitor(QObject *parent)
     : SubscriptionToolBackend(parent)
     , m_watcher(new QFileSystemWatcher(this))
+    , m_debounceTimer(new QTimer(this))
 {
+    // Debounce: multiple filesystem events within 5 seconds count as one message
+    m_debounceTimer->setSingleShot(true);
+    m_debounceTimer->setInterval(5000);
+    connect(m_debounceTimer, &QTimer::timeout, this, [this]() {
+        if (m_pendingIncrement) {
+            m_pendingIncrement = false;
+            incrementUsage();
+        }
+    });
+
     connect(m_watcher, &QFileSystemWatcher::directoryChanged,
             this, &CodexCliMonitor::onDirectoryChanged);
 }
@@ -80,7 +92,10 @@ void CodexCliMonitor::detectActivity()
 
     if (latestMod.isValid() && latestMod > m_lastKnownModification) {
         m_lastKnownModification = latestMod;
-        incrementUsage();
+        m_pendingIncrement = true;
+        if (!m_debounceTimer->isActive()) {
+            m_debounceTimer->start();
+        }
     }
 }
 
@@ -143,8 +158,8 @@ void CodexCliMonitor::syncFromBrowser(const QString &cookieHeader, int browserTy
 
     if (cookieHeader.isEmpty()) {
         setSyncing(false);
-        setSyncStatus(QStringLiteral("No cookies"));
-        Q_EMIT syncCompleted(false, QStringLiteral("No session cookies found for chatgpt.com"));
+        setSyncStatus(i18n("Not logged in"));
+        Q_EMIT syncCompleted(false, i18n("Not logged in — open chatgpt.com in Firefox first"));
         return;
     }
 
@@ -159,17 +174,28 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
     QNetworkRequest request(url);
     request.setRawHeader("Cookie", cookieHeader.toUtf8());
     request.setRawHeader("Accept", "application/json");
-    request.setRawHeader("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) Plasma-AI-Monitor/2.3");
+    request.setRawHeader("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0");
+    // Force HTTP/1.1 — Qt's HTTP/2 implementation triggers 401 on ChatGPT backend API
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+    request.setAttribute(QNetworkRequest::CookieLoadControlAttribute, QNetworkRequest::Manual);
+    request.setAttribute(QNetworkRequest::CookieSaveControlAttribute, QNetworkRequest::Manual);
+    request.setTransferTimeout(30000); // 30 second timeout
 
     QNetworkReply *reply = networkManager()->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
 
         if (reply->error() != QNetworkReply::NoError) {
-            qWarning() << "CodexCliMonitor: Account check failed:" << reply->errorString();
+            int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qWarning() << "CodexCliMonitor: Account check failed:" << reply->errorString() << "HTTP" << httpStatus;
             setSyncing(false);
-            setSyncStatus(QStringLiteral("Error"));
-            Q_EMIT syncCompleted(false, reply->errorString());
+            if (httpStatus == 401 || httpStatus == 403) {
+                setSyncStatus(i18n("Session expired"));
+                Q_EMIT syncCompleted(false, i18n("Session expired — please log in to chatgpt.com in Firefox again"));
+            } else {
+                setSyncStatus(i18n("Sync failed"));
+                Q_EMIT syncCompleted(false, reply->errorString());
+            }
             return;
         }
 
@@ -177,8 +203,8 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
         QJsonDocument doc = QJsonDocument::fromJson(data);
         if (doc.isNull() || !doc.isObject()) {
             setSyncing(false);
-            setSyncStatus(QStringLiteral("Invalid response"));
-            Q_EMIT syncCompleted(false, QStringLiteral("Invalid JSON from ChatGPT API"));
+            setSyncStatus(i18n("Invalid response"));
+            Q_EMIT syncCompleted(false, i18n("Unexpected response from ChatGPT"));
             return;
         }
 
@@ -200,6 +226,9 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
 
         // Parse rate limits
         QJsonObject rateLimits = accountData.value(QStringLiteral("rate_limits")).toObject();
+        if (rateLimits.isEmpty()) {
+            qWarning() << "CodexCliMonitor: No rate_limits found in response";
+        }
         if (!rateLimits.isEmpty()) {
             // Primary: 5-hour usage limit
             QJsonObject fiveHour = rateLimits.value(QStringLiteral("message_cap")).toObject();
@@ -222,6 +251,15 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
                     setUsageLimit(limit);
                     if (remaining >= 0) setUsageCount(limit - remaining);
                 }
+                // Parse resets_at for primary period
+                QString resetsAt = fiveHour.value(QStringLiteral("resets_at")).toString();
+                if (!resetsAt.isEmpty()) {
+                    QDateTime resetTime = QDateTime::fromString(resetsAt, Qt::ISODate);
+                    if (resetTime.isValid()) {
+                        // Period start = reset time minus 5 hours
+                        setPeriodStart(resetTime.addSecs(-5 * 3600));
+                    }
+                }
             }
 
             // Weekly usage limit
@@ -240,6 +278,15 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
                 if (limit > 0) {
                     setSecondaryUsageLimit(limit);
                     if (remaining >= 0) setSecondaryUsageCount(limit - remaining);
+                }
+                // Parse resets_at for secondary period
+                QString resetsAt = weekly.value(QStringLiteral("resets_at")).toString();
+                if (!resetsAt.isEmpty()) {
+                    QDateTime resetTime = QDateTime::fromString(resetsAt, Qt::ISODate);
+                    if (resetTime.isValid()) {
+                        // Period start = reset time minus 7 days
+                        setSecondaryPeriodStart(resetTime.addDays(-7));
+                    }
                 }
             }
 
@@ -292,8 +339,8 @@ void CodexCliMonitor::fetchAccountCheck(const QString &cookieHeader)
         // Sync complete
         setSyncing(false);
         setLastSyncTime(QDateTime::currentDateTimeUtc());
-        setSyncStatus(QStringLiteral("Synced"));
-        Q_EMIT syncCompleted(true, QStringLiteral("Codex usage data synced successfully"));
+        setSyncStatus(i18n("Synced"));
+        Q_EMIT syncCompleted(true, i18n("Codex usage data synced successfully"));
         Q_EMIT usageUpdated();
     });
 }

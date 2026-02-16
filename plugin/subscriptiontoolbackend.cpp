@@ -119,6 +119,7 @@ int SubscriptionToolBackend::defaultSecondaryLimitForPlan(const QString &) const
 
 QDateTime SubscriptionToolBackend::periodStart() const { return m_periodStart; }
 void SubscriptionToolBackend::setPeriodStart(const QDateTime &start) { m_periodStart = start; }
+void SubscriptionToolBackend::setSecondaryPeriodStart(const QDateTime &start) { m_secondaryPeriodStart = start; }
 
 QDateTime SubscriptionToolBackend::periodEnd() const
 {
@@ -372,9 +373,9 @@ void SubscriptionToolBackend::setLastSyncTime(const QDateTime &time)
     Q_EMIT syncStatusChanged();
 }
 
-void SubscriptionToolBackend::syncFromBrowser(const QString &cookieDbPath, int browserType)
+void SubscriptionToolBackend::syncFromBrowser(const QString &cookieHeader, int browserType)
 {
-    Q_UNUSED(cookieDbPath);
+    Q_UNUSED(cookieHeader);
     Q_UNUSED(browserType);
     // Default implementation — subclasses override for actual sync
     setSyncStatus(QStringLiteral("Not supported"));

@@ -11,6 +11,7 @@ set(aiusagemonitor_SRCS
     groqprovider.cpp
     xaiprovider.cpp
     usagedatabase.cpp
+    updatechecker.cpp
     subscriptiontoolbackend.cpp
     claudecodemonitor.cpp
     codexclimonitor.cpp

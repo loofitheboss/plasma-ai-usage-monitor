@@ -19,6 +19,7 @@ KCM.SimpleKCM {
 
     property alias cfg_googleEnabled: googleSwitch.checked
     property alias cfg_googleModel: googleModelField.text
+    property string cfg_googleTier: "free"
     property alias cfg_googleCustomBaseUrl: googleBaseUrlField.text
 
     property alias cfg_mistralEnabled: mistralSwitch.checked
@@ -370,6 +371,27 @@ KCM.SimpleKCM {
             ]
             onEditTextChanged: plasmoid.configuration.googleModel = editText
             property alias text: googleModelField.editText
+        }
+
+        QQC2.ComboBox {
+            id: googleTierField
+            Kirigami.FormData.label: i18n("Pricing tier:")
+            enabled: googleSwitch.checked
+            model: [
+                { text: i18n("Free"), value: "free" },
+                { text: i18n("Paid (Pay-as-you-go)"), value: "paid" }
+            ]
+            textRole: "text"
+            valueRole: "value"
+            currentIndex: cfg_googleTier === "paid" ? 1 : 0
+            onActivated: cfg_googleTier = currentValue
+        }
+
+        QQC2.Label {
+            visible: googleSwitch.checked && googleTierField.currentIndex === 0
+            text: i18n("Free tier has lower rate limits. Select Paid if you have billing enabled.")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.6; wrapMode: Text.WordWrap; Layout.fillWidth: true
         }
 
         QQC2.TextField {

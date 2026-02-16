@@ -9,10 +9,11 @@
 #include <QFileInfo>
 #include <QDebug>
 
-static const char *DB_CONNECTION_NAME = "aiusagemonitor_history";
+std::atomic<int> UsageDatabase::s_instanceCounter{0};
 
 UsageDatabase::UsageDatabase(QObject *parent)
     : QObject(parent)
+    , m_connectionName(QStringLiteral("aiusagemonitor_history_%1").arg(s_instanceCounter.fetch_add(1)))
 {
 }
 
@@ -21,7 +22,7 @@ UsageDatabase::~UsageDatabase()
     if (m_db.isOpen()) {
         m_db.close();
     }
-    QSqlDatabase::removeDatabase(QLatin1String(DB_CONNECTION_NAME));
+    QSqlDatabase::removeDatabase(m_connectionName);
 }
 
 bool UsageDatabase::isEnabled() const { return m_enabled; }
@@ -36,6 +37,8 @@ void UsageDatabase::setEnabled(bool enabled)
 int UsageDatabase::retentionDays() const { return m_retentionDays; }
 void UsageDatabase::setRetentionDays(int days)
 {
+    // Clamp to valid range: 1–365
+    days = qBound(1, days, 365);
     if (m_retentionDays != days) {
         m_retentionDays = days;
         Q_EMIT retentionDaysChanged();
@@ -53,7 +56,7 @@ void UsageDatabase::initDatabase()
 
     QString dbPath = dataDir + QStringLiteral("/usage_history.db");
 
-    m_db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QLatin1String(DB_CONNECTION_NAME));
+    m_db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connectionName);
     m_db.setDatabaseName(dbPath);
 
     if (!m_db.open()) {
@@ -150,6 +153,17 @@ void UsageDatabase::recordSnapshot(const QString &provider,
     if (!m_enabled)
         return;
 
+    // Throttle writes: skip if the same provider wrote recently AND data hasn't changed
+    qint64 now = QDateTime::currentSecsSinceEpoch();
+    qint64 lastWrite = m_lastWriteTime.value(provider, 0);
+    double lastCost = m_lastWrittenCost.value(provider, -1.0);
+
+    bool dataChanged = (cost != lastCost);
+    bool throttled = (now - lastWrite) < WRITE_THROTTLE_SECS;
+
+    if (throttled && !dataChanged)
+        return;
+
     initDatabase();
     if (!m_initialized)
         return;
@@ -175,6 +189,9 @@ void UsageDatabase::recordSnapshot(const QString &provider,
 
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to record snapshot:" << query.lastError().text();
+    } else {
+        m_lastWriteTime[provider] = now;
+        m_lastWrittenCost[provider] = cost;
     }
 }
 
@@ -212,6 +229,18 @@ void UsageDatabase::recordToolSnapshot(const QString &toolName,
     if (!m_enabled)
         return;
 
+    // Throttle writes: skip if the same tool wrote recently AND data hasn't changed
+    qint64 now = QDateTime::currentSecsSinceEpoch();
+    QString throttleKey = QStringLiteral("tool:") + toolName;
+    qint64 lastWrite = m_lastWriteTime.value(throttleKey, 0);
+    double lastCount = m_lastWrittenCost.value(throttleKey, -1.0);
+
+    bool dataChanged = (static_cast<double>(usageCount) != lastCount);
+    bool throttled = (now - lastWrite) < WRITE_THROTTLE_SECS;
+
+    if (throttled && !dataChanged)
+        return;
+
     initDatabase();
     if (!m_initialized)
         return;
@@ -231,6 +260,9 @@ void UsageDatabase::recordToolSnapshot(const QString &toolName,
 
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to record tool snapshot:" << query.lastError().text();
+    } else {
+        m_lastWriteTime[throttleKey] = now;
+        m_lastWrittenCost[throttleKey] = static_cast<double>(usageCount);
     }
 }
 
@@ -373,6 +405,68 @@ QStringList UsageDatabase::getProviders() const
     return providers;
 }
 
+QVariantList UsageDatabase::getToolSnapshots(const QString &toolName,
+                                               const QDateTime &from,
+                                               const QDateTime &to) const
+{
+    QVariantList results;
+
+    if (!m_initialized)
+        return results;
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "SELECT timestamp, usage_count, usage_limit, period_type, "
+        "plan_tier, limit_reached "
+        "FROM subscription_tool_usage "
+        "WHERE tool_name = ? AND timestamp >= ? AND timestamp <= ? "
+        "ORDER BY timestamp ASC"
+    ));
+    query.addBindValue(toolName);
+    query.addBindValue(from.toUTC().toString(Qt::ISODate));
+    query.addBindValue(to.toUTC().toString(Qt::ISODate));
+
+    if (!query.exec()) {
+        qWarning() << "UsageDatabase: getToolSnapshots query failed:" << query.lastError().text();
+        return results;
+    }
+
+    while (query.next()) {
+        QVariantMap row;
+        row[QStringLiteral("timestamp")] = query.value(0).toString();
+        row[QStringLiteral("usageCount")] = query.value(1).toInt();
+        row[QStringLiteral("usageLimit")] = query.value(2).toInt();
+        row[QStringLiteral("periodType")] = query.value(3).toString();
+        row[QStringLiteral("planTier")] = query.value(4).toString();
+        row[QStringLiteral("limitReached")] = query.value(5).toBool();
+        int limit = query.value(2).toInt();
+        row[QStringLiteral("percentUsed")] = limit > 0
+            ? qRound(query.value(1).toDouble() / limit * 100.0) : 0;
+        results.append(row);
+    }
+
+    return results;
+}
+
+QStringList UsageDatabase::getToolNames() const
+{
+    QStringList names;
+
+    if (!m_initialized)
+        return names;
+
+    QSqlQuery query(m_db);
+    query.exec(QStringLiteral(
+        "SELECT DISTINCT tool_name FROM subscription_tool_usage ORDER BY tool_name"
+    ));
+
+    while (query.next()) {
+        names.append(query.value(0).toString());
+    }
+
+    return names;
+}
+
 QString UsageDatabase::exportCsv(const QString &provider,
                                   const QDateTime &from,
                                   const QDateTime &to) const
@@ -426,41 +520,64 @@ QString UsageDatabase::exportJson(const QString &provider,
     return QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Indented));
 }
 
+void UsageDatabase::init()
+{
+    if (m_enabled) {
+        initDatabase();
+    }
+}
+
 void UsageDatabase::pruneOldData()
 {
     if (!m_initialized)
         return;
 
     QDateTime cutoff = QDateTime::currentDateTimeUtc().addDays(-m_retentionDays);
+    QString cutoffStr = cutoff.toString(Qt::ISODate);
+
+    // Wrap all deletes in a single transaction for atomicity and performance
+    m_db.transaction();
+
+    int totalDeleted = 0;
 
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral(
         "DELETE FROM usage_snapshots WHERE timestamp < ?"
     ));
-    query.addBindValue(cutoff.toString(Qt::ISODate));
+    query.addBindValue(cutoffStr);
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to prune snapshots:" << query.lastError().text();
+    } else {
+        totalDeleted += query.numRowsAffected();
     }
 
     query.prepare(QStringLiteral(
         "DELETE FROM rate_limit_events WHERE timestamp < ?"
     ));
-    query.addBindValue(cutoff.toString(Qt::ISODate));
+    query.addBindValue(cutoffStr);
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to prune events:" << query.lastError().text();
+    } else {
+        totalDeleted += query.numRowsAffected();
     }
 
     query.prepare(QStringLiteral(
         "DELETE FROM subscription_tool_usage WHERE timestamp < ?"
     ));
-    query.addBindValue(cutoff.toString(Qt::ISODate));
+    query.addBindValue(cutoffStr);
     if (!query.exec()) {
         qWarning() << "UsageDatabase: Failed to prune tool usage:" << query.lastError().text();
+    } else {
+        totalDeleted += query.numRowsAffected();
     }
 
-    // Reclaim space
-    QSqlQuery vacuum(m_db);
-    vacuum.exec(QStringLiteral("PRAGMA incremental_vacuum"));
+    m_db.commit();
+
+    // Only vacuum if a meaningful number of rows were deleted
+    if (totalDeleted > 100) {
+        QSqlQuery vacuum(m_db);
+        vacuum.exec(QStringLiteral("PRAGMA incremental_vacuum"));
+    }
 }
 
 qint64 UsageDatabase::databaseSize() const

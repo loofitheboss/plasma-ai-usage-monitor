@@ -72,6 +72,9 @@
         <entry name="googleModel" type="String">
             <default>gemini-2.0-flash</default>
         </entry>
+        <entry name="googleTier" type="String">
+            <default>free</default>
+        </entry>
         <entry name="googleCustomBaseUrl" type="String">
             <default></default>
         </entry>

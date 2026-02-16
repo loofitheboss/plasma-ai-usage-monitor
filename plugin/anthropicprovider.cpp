@@ -1,4 +1,5 @@
 #include "anthropicprovider.h"
+#include <KLocalizedString>
 #include <QNetworkRequest>
 #include <QDebug>
 
@@ -7,6 +8,8 @@ AnthropicProvider::AnthropicProvider(QObject *parent)
 {
     // Register model pricing ($ per 1M tokens) — Anthropic pricing as of 2025
     registerModelPricing(QStringLiteral("claude-sonnet-4-20250514"), 3.0, 15.0);
+    registerModelPricing(QStringLiteral("claude-opus-4-20250514"), 15.0, 75.0);
+    registerModelPricing(QStringLiteral("claude-haiku-4-20250514"), 0.80, 4.0);
     registerModelPricing(QStringLiteral("claude-3-7-sonnet"), 3.0, 15.0);
     registerModelPricing(QStringLiteral("claude-3-5-haiku"), 0.80, 4.0);
     registerModelPricing(QStringLiteral("claude-3-5-sonnet"), 3.0, 15.0);
@@ -26,11 +29,12 @@ void AnthropicProvider::setModel(const QString &model)
 void AnthropicProvider::refresh()
 {
     if (!hasApiKey()) {
-        setError(QStringLiteral("No API key configured"));
+        setError(i18n("No API key configured"));
         setConnected(false);
         return;
     }
 
+    beginRefresh();
     setLoading(true);
     clearError();
     fetchRateLimits();
@@ -42,10 +46,11 @@ void AnthropicProvider::fetchRateLimits()
     // This is a minimal request that counts tokens for a tiny message.
     QUrl url(QStringLiteral("%1/messages/count_tokens").arg(effectiveBaseUrl(BASE_URL)));
 
-    QNetworkRequest request(url);
+    QNetworkRequest request = createRequest(url);
+    // Anthropic uses x-api-key instead of Bearer auth
+    request.setRawHeader("Authorization", QByteArray()); // clear default Bearer
     request.setRawHeader("x-api-key", apiKey().toUtf8());
     request.setRawHeader("anthropic-version", API_VERSION);
-    request.setRawHeader("Content-Type", "application/json");
 
     // Minimal payload for count_tokens
     QJsonObject payload;
@@ -60,8 +65,11 @@ void AnthropicProvider::fetchRateLimits()
 
     QByteArray body = QJsonDocument(payload).toJson(QJsonDocument::Compact);
 
+    int gen = currentGeneration();
     QNetworkReply *reply = networkManager()->post(request, body);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    trackReply(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gen]() {
+        if (!isCurrentGeneration(gen)) { reply->deleteLater(); return; }
         onCountTokensReply(reply);
     });
 }
@@ -73,14 +81,14 @@ void AnthropicProvider::onCountTokensReply(QNetworkReply *reply)
     if (reply->error() != QNetworkReply::NoError) {
         int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (httpStatus == 401) {
-            setError(QStringLiteral("Invalid API key"));
+            setError(i18n("Invalid API key"));
         } else if (httpStatus == 429) {
-            setError(QStringLiteral("Rate limited"));
+            setError(i18n("Rate limited"));
             // Still parse headers -- they're returned on 429 too
         } else {
-            setError(QStringLiteral("API error: %1 (HTTP %2)")
-                         .arg(reply->errorString())
-                         .arg(httpStatus));
+            setError(i18n("API error: %1 (HTTP %2)",
+                         reply->errorString(),
+                         QString::number(httpStatus)));
             setLoading(false);
             return;
         }
@@ -92,27 +100,21 @@ void AnthropicProvider::onCountTokensReply(QNetworkReply *reply)
         return val.isEmpty() ? 0 : val.toInt();
     };
 
-    // Request limits
+    // Request limits — use centralized parser for request limits
     int reqLimit = readHeader("anthropic-ratelimit-requests-limit");
     int reqRemaining = readHeader("anthropic-ratelimit-requests-remaining");
     QString reqReset = QString::fromUtf8(reply->rawHeader("anthropic-ratelimit-requests-reset"));
 
-    // Input token limits
-    int inputLimit = readHeader("anthropic-ratelimit-input-tokens-limit");
-    int inputRemaining = readHeader("anthropic-ratelimit-input-tokens-remaining");
-
-    // Output token limits
-    int outputLimit = readHeader("anthropic-ratelimit-output-tokens-limit");
-    int outputRemaining = readHeader("anthropic-ratelimit-output-tokens-remaining");
-
-    // Set the primary rate limits (requests)
     if (reqLimit > 0) {
         setRateLimitRequests(reqLimit);
         setRateLimitRequestsRemaining(reqRemaining);
     }
 
-    // Use the total token limits (input + output combined for display)
-    // We show the larger of the two as the main token rate limit
+    // Input + output token limits (combined for display)
+    int inputLimit = readHeader("anthropic-ratelimit-input-tokens-limit");
+    int inputRemaining = readHeader("anthropic-ratelimit-input-tokens-remaining");
+    int outputLimit = readHeader("anthropic-ratelimit-output-tokens-limit");
+    int outputRemaining = readHeader("anthropic-ratelimit-output-tokens-remaining");
     int tokenLimit = inputLimit + outputLimit;
     int tokenRemaining = inputRemaining + outputRemaining;
     if (tokenLimit > 0) {

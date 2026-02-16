@@ -6,7 +6,11 @@
 #include <QDateTime>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QHash>
+#include <QList>
+#include <QTimer>
+#include <functional>
 
 /**
  * Abstract base class for AI provider backends.
@@ -52,6 +56,7 @@ class ProviderBackend : public QObject
     Q_PROPERTY(double dailyCost READ dailyCost NOTIFY dataUpdated)
     Q_PROPERTY(double monthlyCost READ monthlyCost NOTIFY dataUpdated)
     Q_PROPERTY(double estimatedMonthlyCost READ estimatedMonthlyCost NOTIFY dataUpdated)
+    Q_PROPERTY(int budgetWarningPercent READ budgetWarningPercent WRITE setBudgetWarningPercent NOTIFY budgetChanged)
 
     // Custom base URL (proxy support)
     Q_PROPERTY(QString customBaseUrl READ customBaseUrl WRITE setCustomBaseUrl NOTIFY customBaseUrlChanged)
@@ -95,6 +100,8 @@ public:
     double monthlyBudget() const;
     void setDailyBudget(double budget);
     void setMonthlyBudget(double budget);
+    int budgetWarningPercent() const;
+    void setBudgetWarningPercent(int percent);
     double dailyCost() const;
     double monthlyCost() const;
     double estimatedMonthlyCost() const;
@@ -114,6 +121,10 @@ public:
     // Data fetching
     Q_INVOKABLE virtual void refresh() = 0;
 
+    /// Current request generation. Incremented on each refresh().
+    /// Reply handlers should discard results if the generation has advanced.
+    Q_INVOKABLE int currentGeneration() const;
+
 Q_SIGNALS:
     void connectedChanged();
     void loadingChanged();
@@ -121,6 +132,7 @@ Q_SIGNALS:
     void dataUpdated();
     void quotaWarning(const QString &provider, int percentUsed);
     void budgetChanged();
+    void budgetWarning(const QString &provider, const QString &period, double spent, double budget);
     void budgetExceeded(const QString &provider, const QString &period, double spent, double budget);
     void customBaseUrlChanged();
     void providerDisconnected(const QString &provider);
@@ -135,6 +147,43 @@ protected:
     QNetworkAccessManager *networkManager() const;
     QString apiKey() const;
     QString effectiveBaseUrl(const char *defaultUrl) const;
+
+    /// Create a QNetworkRequest with standard headers, timeout, and optional auth.
+    /// Subclasses can override authStyle for provider-specific headers.
+    QNetworkRequest createRequest(const QUrl &url) const;
+
+    /// Parse standard x-ratelimit-* headers from a reply.
+    /// @param prefix  Header prefix (e.g. "x-ratelimit-" or "anthropic-ratelimit-")
+    void parseRateLimitHeaders(QNetworkReply *reply, const char *prefix = "x-ratelimit-");
+
+    /// Advance the generation counter and abort any in-flight replies.
+    /// Call this at the start of refresh() implementations.
+    void beginRefresh();
+
+    /// Check if a reply belongs to the current generation.
+    /// Returns false if the reply is stale and should be discarded.
+    bool isCurrentGeneration(int generation) const;
+
+    /// Check if an HTTP status code is retryable (429, 500, 502, 503).
+    static bool isRetryableStatus(int httpStatus);
+
+    /// Register a QNetworkReply for tracking. Tracked replies are aborted
+    /// by beginRefresh() when a new refresh cycle starts.
+    void trackReply(QNetworkReply *reply);
+
+    /// Retry a request with exponential backoff.
+    /// @param reply     The failed reply (will be deleteLater'd)
+    /// @param url       The URL to retry
+    /// @param postBody  If non-empty, sends a POST; otherwise GET
+    /// @param callback  Function to call with the new reply
+    /// @param attempt   Current attempt number (starts at 1)
+    /// @param maxRetries Maximum retry attempts (default 2)
+    void retryRequest(QNetworkReply *reply,
+                      const QUrl &url,
+                      const QByteArray &postBody,
+                      std::function<void(QNetworkReply *)> callback,
+                      int attempt = 1,
+                      int maxRetries = 2);
 
     // Data setters for subclasses
     void setInputTokens(qint64 tokens);
@@ -186,6 +235,7 @@ private:
 
     double m_dailyBudget = 0.0;
     double m_monthlyBudget = 0.0;
+    int m_budgetWarningPercent = 80;
 
     int m_rateLimitRequests = 0;
     int m_rateLimitTokens = 0;
@@ -198,7 +248,18 @@ private:
     bool m_wasConnected = false; // for disconnect/reconnect tracking
     bool m_isEstimatedCost = false;
 
+    int m_generation = 0; // incremented on each refresh() to discard stale replies
+    QList<QNetworkReply *> m_activeReplies; // tracked for cancellation
+
+    // Budget notification dedup — avoid repeating same alert within a period
+    bool m_dailyWarningEmitted = false;
+    bool m_dailyExceededEmitted = false;
+    bool m_monthlyWarningEmitted = false;
+    bool m_monthlyExceededEmitted = false;
+
     QHash<QString, ModelPricing> m_modelPricing;
+
+    static constexpr int REQUEST_TIMEOUT_MS = 30000; // 30 seconds
 };
 
 #endif // PROVIDERBACKEND_H

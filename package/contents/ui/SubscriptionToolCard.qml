@@ -4,6 +4,7 @@ import QtQuick.Controls as QQC2
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.kirigami as Kirigami
+import "Utils.js" as Utils
 
 /**
  * Full-dashboard card for subscription tool usage (Claude Code, Codex, Copilot).
@@ -51,6 +52,20 @@ ColumnLayout {
 
         Behavior on Layout.preferredHeight {
             NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+        }
+
+        // Accent stripe on the left edge
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 3
+            radius: Kirigami.Units.cornerRadius
+            color: toolCard.monitor?.installed ? toolCard.toolColor : "transparent"
+            opacity: toolCard.monitor?.installed ? 0.6 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: 300 }
+            }
         }
 
         clip: true
@@ -126,6 +141,7 @@ ColumnLayout {
                 // Status indicator
                 PlasmaComponents.Label {
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
+                    elide: Text.ElideRight
                     text: {
                         if (!toolCard.monitor) return i18n("N/A");
                         if (!toolCard.monitor.installed) return i18n("Not Installed");
@@ -247,6 +263,11 @@ ColumnLayout {
                     from: 0
                     to: toolCard.monitor?.usageLimit ?? 1
                     value: Math.min(toolCard.monitor?.usageCount ?? 0, toolCard.monitor?.usageLimit ?? 1)
+
+                    Accessible.name: i18n("Usage: %1 of %2, %3% used",
+                        toolCard.monitor?.usageCount ?? 0,
+                        toolCard.monitor?.usageLimit ?? 0,
+                        Math.round(toolCard.monitor?.percentUsed ?? 0))
 
                     background: Rectangle {
                         implicitHeight: 6; radius: 3
@@ -495,6 +516,76 @@ ColumnLayout {
                 }
             }
 
+            // ═══ Organization metrics (GitHub Copilot) ═══
+            Rectangle {
+                Layout.fillWidth: true
+                visible: !toolCard.collapsed && (toolCard.monitor?.hasOrgMetrics ?? false)
+                height: orgMetricsCol.implicitHeight + Kirigami.Units.smallSpacing * 2
+                radius: Kirigami.Units.cornerRadius
+                color: Qt.alpha(toolCard.toolColor, 0.06)
+                border.width: 1
+                border.color: Qt.alpha(toolCard.toolColor, 0.15)
+
+                ColumnLayout {
+                    id: orgMetricsCol
+                    anchors {
+                        fill: parent
+                        margins: Kirigami.Units.smallSpacing
+                    }
+                    spacing: Kirigami.Units.smallSpacing
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Kirigami.Icon {
+                            source: "group"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                            opacity: 0.7
+                        }
+                        PlasmaComponents.Label {
+                            text: i18n("Organization")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            font.bold: true
+                            opacity: 0.7
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        PlasmaComponents.Label {
+                            text: i18n("Active users:")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            opacity: 0.6
+                        }
+                        Item { Layout.fillWidth: true }
+                        PlasmaComponents.Label {
+                            text: (toolCard.monitor?.orgActiveUsers ?? 0) + " / " + (toolCard.monitor?.orgTotalSeats ?? 0) + " " + i18n("seats")
+                            font.pointSize: Kirigami.Theme.smallFont.pointSize
+                            font.bold: true
+                        }
+                    }
+
+                    QQC2.ProgressBar {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 4
+                        from: 0
+                        to: Math.max(toolCard.monitor?.orgTotalSeats ?? 1, 1)
+                        value: toolCard.monitor?.orgActiveUsers ?? 0
+
+                        background: Rectangle {
+                            implicitHeight: 4; radius: 2
+                            color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+                        }
+                        contentItem: Rectangle {
+                            width: parent.visualPosition * parent.width
+                            height: 4; radius: 2
+                            color: toolCard.toolColor
+                            Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+                        }
+                    }
+                }
+            }
+
             // ═══ Time until reset ═══
             RowLayout {
                 Layout.fillWidth: true
@@ -518,12 +609,24 @@ ColumnLayout {
 
                 // Sync status badge
                 PlasmaComponents.Label {
+                    Layout.fillWidth: true
                     visible: (toolCard.monitor?.syncStatus ?? "") !== ""
                              && toolCard.monitor?.syncStatus !== "idle"
                     text: toolCard.monitor?.syncStatus ?? ""
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
-                    opacity: 0.4
+                    opacity: 0.7
                     font.italic: true
+                    elide: Text.ElideRight
+                    color: {
+                        var status = toolCard.monitor?.syncStatus ?? "";
+                        if (status === i18n("Synced"))
+                            return Kirigami.Theme.positiveTextColor;
+                        if (status === i18n("Session expired") || status === i18n("Not logged in")
+                            || status === i18n("Sync failed") || status === i18n("Invalid response")
+                            || status === i18n("No organization"))
+                            return Kirigami.Theme.negativeTextColor;
+                        return Kirigami.Theme.disabledTextColor;
+                    }
                 }
 
                 // Last activity
@@ -533,6 +636,7 @@ ColumnLayout {
                     text: i18n("Last: %1", formatRelativeTime(toolCard.monitor?.lastActivity))
                     font.pointSize: Kirigami.Theme.smallFont.pointSize
                     opacity: 0.4
+                    elide: Text.ElideRight
                 }
             }
 
@@ -612,23 +716,13 @@ ColumnLayout {
         syncRequested();
     }
 
-    // ── Helper functions ──
+    // ── Helper functions (delegated to Utils.js) ──
 
     function usageColor(percent) {
-        if (percent >= 95) return Kirigami.Theme.negativeTextColor;
-        if (percent >= 80) return "#FF8C00"; // orange
-        if (percent >= 50) return Kirigami.Theme.neutralTextColor;
-        return Kirigami.Theme.positiveTextColor;
+        return Utils.usageColor(percent, Kirigami.Theme);
     }
 
     function formatRelativeTime(dateTime) {
-        if (!dateTime) return "";
-        var now = new Date();
-        var diff = Math.floor((now - dateTime) / 1000);
-        if (diff < 5) return i18n("just now");
-        if (diff < 60) return i18n("%1s ago", diff);
-        if (diff < 3600) return i18n("%1m ago", Math.floor(diff / 60));
-        if (diff < 86400) return i18n("%1h ago", Math.floor(diff / 3600));
-        return Qt.formatTime(dateTime, "hh:mm:ss");
+        return Utils.formatRelativeTime(dateTime, Qt, i18n);
     }
 }

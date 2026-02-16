@@ -186,7 +186,7 @@ public:
     Q_INVOKABLE void resetUsage();
     Q_INVOKABLE virtual void checkToolInstalled() = 0;
     Q_INVOKABLE virtual void detectActivity() = 0;
-    Q_INVOKABLE virtual void syncFromBrowser(const QString &cookieDbPath, int browserType);
+    Q_INVOKABLE virtual void syncFromBrowser(const QString &cookieHeader, int browserType);
 
     // Plan presets (subclasses populate these)
     Q_INVOKABLE virtual QStringList availablePlans() const = 0;
@@ -212,6 +212,7 @@ protected:
     void setUsageCount(int count);
     void setSecondaryUsageCount(int count);
     void setPeriodStart(const QDateTime &start);
+    void setSecondaryPeriodStart(const QDateTime &start);
     void setLastActivity(const QDateTime &time);
 
     // Sync helpers for subclasses

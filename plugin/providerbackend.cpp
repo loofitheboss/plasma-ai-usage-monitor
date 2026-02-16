@@ -1,5 +1,7 @@
 #include "providerbackend.h"
 #include <QDate>
+#include <QUrl>
+#include <QRandomGenerator>
 
 ProviderBackend::ProviderBackend(QObject *parent)
     : QObject(parent)
@@ -115,6 +117,15 @@ void ProviderBackend::setMonthlyBudget(double budget)
     }
 }
 
+int ProviderBackend::budgetWarningPercent() const { return m_budgetWarningPercent; }
+void ProviderBackend::setBudgetWarningPercent(int percent)
+{
+    if (m_budgetWarningPercent != percent) {
+        m_budgetWarningPercent = percent;
+        Q_EMIT budgetChanged();
+    }
+}
+
 void ProviderBackend::setDailyCost(double cost) {
     m_dailyCost = cost;
     checkBudgetLimits();
@@ -126,11 +137,38 @@ void ProviderBackend::setMonthlyCost(double cost) {
 
 void ProviderBackend::checkBudgetLimits()
 {
-    if (m_dailyBudget > 0 && m_dailyCost >= m_dailyBudget) {
-        Q_EMIT budgetExceeded(name(), QStringLiteral("daily"), m_dailyCost, m_dailyBudget);
+    double warningFraction = m_budgetWarningPercent / 100.0;
+
+    // Daily budget checks
+    if (m_dailyBudget > 0) {
+        if (m_dailyCost >= m_dailyBudget && !m_dailyExceededEmitted) {
+            m_dailyExceededEmitted = true;
+            Q_EMIT budgetExceeded(name(), QStringLiteral("daily"), m_dailyCost, m_dailyBudget);
+        } else if (m_dailyCost >= m_dailyBudget * warningFraction && !m_dailyWarningEmitted) {
+            m_dailyWarningEmitted = true;
+            Q_EMIT budgetWarning(name(), QStringLiteral("daily"), m_dailyCost, m_dailyBudget);
+        }
+        // Reset flags when cost drops (new billing period)
+        if (m_dailyCost < m_dailyBudget * warningFraction) {
+            m_dailyWarningEmitted = false;
+            m_dailyExceededEmitted = false;
+        }
     }
-    if (m_monthlyBudget > 0 && m_monthlyCost >= m_monthlyBudget) {
-        Q_EMIT budgetExceeded(name(), QStringLiteral("monthly"), m_monthlyCost, m_monthlyBudget);
+
+    // Monthly budget checks
+    if (m_monthlyBudget > 0) {
+        if (m_monthlyCost >= m_monthlyBudget && !m_monthlyExceededEmitted) {
+            m_monthlyExceededEmitted = true;
+            Q_EMIT budgetExceeded(name(), QStringLiteral("monthly"), m_monthlyCost, m_monthlyBudget);
+        } else if (m_monthlyCost >= m_monthlyBudget * warningFraction && !m_monthlyWarningEmitted) {
+            m_monthlyWarningEmitted = true;
+            Q_EMIT budgetWarning(name(), QStringLiteral("monthly"), m_monthlyCost, m_monthlyBudget);
+        }
+        // Reset flags when cost drops (new billing period)
+        if (m_monthlyCost < m_monthlyBudget * warningFraction) {
+            m_monthlyWarningEmitted = false;
+            m_monthlyExceededEmitted = false;
+        }
     }
 }
 
@@ -166,6 +204,16 @@ QString ProviderBackend::effectiveBaseUrl(const char *defaultUrl) const
         QString url = m_customBaseUrl;
         while (url.endsWith(QLatin1Char('/'))) {
             url.chop(1);
+        }
+        // Warn if HTTP (not HTTPS) and not localhost
+        QUrl parsed(url);
+        if (parsed.scheme() == QLatin1String("http")
+            && parsed.host() != QLatin1String("localhost")
+            && parsed.host() != QLatin1String("127.0.0.1")
+            && parsed.host() != QLatin1String("::1")) {
+            qWarning() << "ProviderBackend:" << name()
+                       << "- custom URL uses insecure HTTP. API keys will be sent unencrypted:"
+                       << url;
         }
         return url;
     }
@@ -206,6 +254,154 @@ QString ProviderBackend::apiKey() const
 QNetworkAccessManager *ProviderBackend::networkManager() const
 {
     return m_networkManager;
+}
+
+// --- Centralized Request Builder ---
+
+QNetworkRequest ProviderBackend::createRequest(const QUrl &url) const
+{
+    QNetworkRequest request(url);
+    request.setTransferTimeout(REQUEST_TIMEOUT_MS);
+    request.setRawHeader("Content-Type", "application/json");
+
+    // Default Bearer auth (Anthropic overrides with x-api-key)
+    if (!m_apiKey.isEmpty()) {
+        request.setRawHeader("Authorization",
+                             QStringLiteral("Bearer %1").arg(m_apiKey).toUtf8());
+    }
+
+    return request;
+}
+
+// --- Rate Limit Header Parsing ---
+
+void ProviderBackend::parseRateLimitHeaders(QNetworkReply *reply, const char *prefix)
+{
+    auto readHeader = [&](const QByteArray &suffix) -> int {
+        QByteArray val = reply->rawHeader(QByteArray(prefix) + suffix);
+        return val.isEmpty() ? 0 : val.toInt();
+    };
+
+    int rlRequests = readHeader("limit-requests");
+    int rlTokens = readHeader("limit-tokens");
+    int rlReqRemaining = readHeader("remaining-requests");
+    int rlTokRemaining = readHeader("remaining-tokens");
+    QString rlReset = QString::fromUtf8(reply->rawHeader(QByteArray(prefix) + "reset-requests"));
+
+    if (rlRequests > 0) {
+        setRateLimitRequests(rlRequests);
+        setRateLimitRequestsRemaining(rlReqRemaining);
+    }
+    if (rlTokens > 0) {
+        setRateLimitTokens(rlTokens);
+        setRateLimitTokensRemaining(rlTokRemaining);
+    }
+    if (!rlReset.isEmpty()) {
+        setRateLimitResetTime(rlReset);
+    }
+}
+
+// --- Generation Counter & Request Cancellation ---
+
+int ProviderBackend::currentGeneration() const
+{
+    return m_generation;
+}
+
+void ProviderBackend::trackReply(QNetworkReply *reply)
+{
+    m_activeReplies.append(reply);
+    // Auto-remove from tracking when the reply finishes
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        m_activeReplies.removeOne(reply);
+    });
+}
+
+void ProviderBackend::beginRefresh()
+{
+    m_generation++;
+
+    // Abort and clean up any in-flight replies from previous refresh
+    for (QNetworkReply *reply : std::as_const(m_activeReplies)) {
+        if (reply && reply->isRunning()) {
+            reply->abort();
+        }
+        reply->deleteLater();
+    }
+    m_activeReplies.clear();
+}
+
+bool ProviderBackend::isCurrentGeneration(int generation) const
+{
+    return generation == m_generation;
+}
+
+// --- Retry Logic ---
+
+bool ProviderBackend::isRetryableStatus(int httpStatus)
+{
+    return httpStatus == 429 || httpStatus == 500 || httpStatus == 502 || httpStatus == 503;
+}
+
+void ProviderBackend::retryRequest(QNetworkReply *reply,
+                                    const QUrl &url,
+                                    const QByteArray &postBody,
+                                    std::function<void(QNetworkReply *)> callback,
+                                    int attempt,
+                                    int maxRetries)
+{
+    if (attempt > maxRetries) {
+        // No more retries — let the caller handle the error
+        callback(reply);
+        return;
+    }
+
+    reply->deleteLater();
+
+    // Calculate backoff: 2^attempt seconds + jitter (0-500ms)
+    int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    // Check for Retry-After header (seconds or HTTP date)
+    int delaySecs = (1 << attempt); // 2, 4, 8...
+    QByteArray retryAfter = reply->rawHeader("Retry-After");
+    if (!retryAfter.isEmpty()) {
+        bool ok;
+        int retryVal = retryAfter.toInt(&ok);
+        if (ok && retryVal > 0 && retryVal < 120) {
+            delaySecs = retryVal;
+        }
+    }
+
+    int delayMs = delaySecs * 1000 + (QRandomGenerator::global()->bounded(500)); // jitter
+    int gen = m_generation;
+
+    qWarning() << "ProviderBackend:" << name()
+               << "- retrying request (attempt" << attempt << "/" << maxRetries
+               << ") after" << delayMs << "ms (HTTP" << httpStatus << ")";
+
+    QTimer::singleShot(delayMs, this, [this, url, postBody, callback, attempt, maxRetries, gen]() {
+        if (!isCurrentGeneration(gen)) return; // stale
+
+        QNetworkRequest request = createRequest(url);
+        QNetworkReply *retryReply;
+        if (postBody.isEmpty()) {
+            retryReply = networkManager()->get(request);
+        } else {
+            retryReply = networkManager()->post(request, postBody);
+        }
+        trackReply(retryReply);
+
+        connect(retryReply, &QNetworkReply::finished, this, [this, retryReply, url, postBody, callback, attempt, maxRetries, gen]() {
+            if (!isCurrentGeneration(gen)) { retryReply->deleteLater(); return; }
+
+            int status = retryReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (retryReply->error() != QNetworkReply::NoError && isRetryableStatus(status)) {
+                retryRequest(retryReply, url, postBody, callback, attempt + 1, maxRetries);
+            } else {
+                callback(retryReply);
+            }
+        });
+    });
 }
 
 // --- Token-based Cost Estimation ---

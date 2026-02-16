@@ -94,6 +94,12 @@ private:
     QMap<QString, QString> readFirefoxCookies(const QString &domain) const;
 
     int m_browserType = Firefox;
+
+    // Short-lived cache to avoid redundant DB reads within a single operation
+    mutable QString m_cachedDomain;
+    mutable QMap<QString, QString> m_cachedCookies;
+    mutable qint64 m_cacheTimestamp = 0;
+    static constexpr int CACHE_TTL_MS = 3000; // 3 seconds
 };
 
 #endif // BROWSERCOOKIEEXTRACTOR_H
