@@ -42,13 +42,12 @@ jobs:
           else
             VERSION=dev-${GITHUB_SHA::7}
           fi
-          tar \
-            --warning=no-file-changed \
-            --exclude=.git \
-            --exclude=build \
-            --exclude=plasma-ai-usage-monitor-${VERSION}.tar.gz \
-            --transform "s,^,plasma-ai-usage-monitor-${VERSION}/," \
-            -czf plasma-ai-usage-monitor-${VERSION}.tar.gz .
+          STAGE=/tmp/plasma-ai-usage-monitor-${VERSION}
+          rm -rf "${STAGE}"
+          mkdir -p "${STAGE}"
+          cp -a . "${STAGE}/"
+          rm -rf "${STAGE}/.git" "${STAGE}/build"
+          tar -C /tmp -czf "plasma-ai-usage-monitor-${VERSION}.tar.gz" "plasma-ai-usage-monitor-${VERSION}"
 
       - name: Generate release notes
         id: notes
