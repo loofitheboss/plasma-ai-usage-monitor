@@ -64,9 +64,7 @@ jobs:
               echo "Release ${VERSION}" > release_notes.md
             fi
           else
-            cat > release_notes.md <<EOF
-            CI validation run for ${VERSION} (workflow_dispatch).
-            EOF
+            printf 'CI validation run for %s (workflow_dispatch).\n' "${VERSION}" > release_notes.md
           fi
 
       - name: Create or update release
