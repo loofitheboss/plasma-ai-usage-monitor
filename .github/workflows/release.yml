@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,6 +13,8 @@ jobs:
   build:
     name: Build & Release
     runs-on: ubuntu-24.04
+    container:
+      image: fedora:43
 
     steps:
       - name: Checkout
@@ -19,12 +22,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            cmake extra-cmake-modules g++ \
-            qt6-base-dev qt6-declarative-dev \
-            libkf6wallet-dev libkf6i18n-dev libkf6notifications-dev \
-            libplasma-dev
+          dnf -y update
+          dnf -y install \
+            cmake extra-cmake-modules gcc-c++ \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-sql \
+            libplasma-devel \
+            kf6-kwallet-devel kf6-ki18n-devel kf6-knotifications-devel \
+            git
 
       - name: Build
         run: |
@@ -34,22 +38,29 @@ jobs:
 
       - name: Package source tarball
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF_NAME#v}
+          else
+            VERSION=dev-${GITHUB_SHA::7}
+          fi
           git archive --format=tar.gz --prefix=plasma-ai-usage-monitor-${VERSION}/ \
             -o plasma-ai-usage-monitor-${VERSION}.tar.gz HEAD
 
       - name: Generate release notes
         id: notes
         run: |
-          # Extract version from tag
-          VERSION=${GITHUB_REF_NAME#v}
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF_NAME#v}
+          else
+            VERSION=dev-${GITHUB_SHA::7}
+          fi
           
           # Get commits since previous tag
           PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
-          if [ "$PREV_TAG" != "$GITHUB_REF_NAME" ]; then
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$GITHUB_REF_NAME" ]; then
             echo "## Changes since ${PREV_TAG}" > release_notes.md
             echo "" >> release_notes.md
-            git log --pretty=format:"- %s" ${PREV_TAG}..${GITHUB_REF_NAME} >> release_notes.md
+            git log --pretty=format:"- %s" ${PREV_TAG}..HEAD >> release_notes.md
           else
             echo "## Initial Release" > release_notes.md
           fi
@@ -66,6 +77,7 @@ jobs:
           echo '```' >> release_notes.md
 
       - name: Create or update release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: plasma-ai-usage-monitor-*.tar.gz

@@ -9,25 +9,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    container:
+      image: fedora:43
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
+        dnf -y update
+        dnf -y install \
           cmake \
           extra-cmake-modules \
-          g++ \
+          gcc-c++ \
           gettext \
-          libkf6wallet-dev \
-          libkf6i18n-dev \
-          libkf6notifications-dev \
-          libplasma-dev \
-          qt6-base-dev \
-          qt6-declarative-dev \
-          libqt6sql6-sqlite
+          kf6-kwallet-devel \
+          kf6-ki18n-devel \
+          kf6-knotifications-devel \
+          libplasma-devel \
+          qt6-qtbase-devel \
+          qt6-qtdeclarative-devel \
+          qt6-qtbase-sql \
+          git findutils
 
     - name: Configure
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
