@@ -69,7 +69,7 @@ MouseArea {
     Kirigami.Icon {
         id: mainIcon
         anchors.fill: parent
-        source: "cpu"
+        source: Qt.resolvedUrl("../icons/logo.png")
         active: compactRoot.containsMouse
         visible: compactRoot.displayMode === "icon"
 
@@ -123,7 +123,7 @@ MouseArea {
         spacing: Kirigami.Units.smallSpacing / 2
 
         Kirigami.Icon {
-            source: "cpu"
+            source: Qt.resolvedUrl("../icons/logo.png")
             Layout.preferredWidth: Kirigami.Units.iconSizes.small
             Layout.preferredHeight: Kirigami.Units.iconSizes.small
         }
