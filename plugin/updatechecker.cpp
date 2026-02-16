@@ -3,6 +3,20 @@
 #include <QJsonObject>
 #include <QUrl>
 #include <QDebug>
+#include <QRegularExpression>
+
+static QString normalizeVersionString(QString version)
+{
+    version = version.trimmed();
+
+    if (version.startsWith(QLatin1Char('v')) || version.startsWith(QLatin1Char('V')))
+        version.remove(0, 1);
+
+    // Keep only the numeric semantic part (e.g. "2.8.0" from "2.8.0-beta1").
+    static const QRegularExpression re(QStringLiteral("^(\\d+\\.\\d+\\.\\d+)"));
+    const QRegularExpressionMatch m = re.match(version);
+    return m.hasMatch() ? m.captured(1) : QString();
+}
 
 UpdateChecker::UpdateChecker(QObject *parent)
     : QObject(parent)
@@ -72,20 +86,18 @@ void UpdateChecker::checkForUpdate()
         QString tagName = obj.value(QStringLiteral("tag_name")).toString();
         const QString htmlUrl = obj.value(QStringLiteral("html_url")).toString();
 
-        // Strip leading 'v' from tag
-        if (tagName.startsWith(QLatin1Char('v')) || tagName.startsWith(QLatin1Char('V')))
-            tagName = tagName.mid(1);
-
-        const QVersionNumber remote = QVersionNumber::fromString(tagName);
-        const QVersionNumber local  = QVersionNumber::fromString(m_currentVersion);
+        const QString normalizedRemote = normalizeVersionString(tagName);
+        const QString normalizedLocal = normalizeVersionString(m_currentVersion);
+        const QVersionNumber remote = QVersionNumber::fromString(normalizedRemote);
+        const QVersionNumber local  = QVersionNumber::fromString(normalizedLocal);
 
         if (remote.isNull() || local.isNull()) return;
 
-        m_latestVersion = tagName;
+        m_latestVersion = normalizedRemote;
         Q_EMIT latestVersionChanged();
 
         if (remote > local) {
-            Q_EMIT updateAvailable(tagName, htmlUrl);
+            Q_EMIT updateAvailable(normalizedRemote, htmlUrl);
         }
     });
 }
