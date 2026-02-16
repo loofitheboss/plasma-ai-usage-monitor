@@ -43,6 +43,7 @@ jobs:
             VERSION=dev-${GITHUB_SHA::7}
           fi
           tar \
+            --warning=no-file-changed \
             --exclude=.git \
             --exclude=build \
             --exclude=plasma-ai-usage-monitor-${VERSION}.tar.gz \
