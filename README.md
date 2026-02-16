@@ -261,7 +261,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.8.0)
+├── CMakeLists.txt                  # Root build system (v2.8.1)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -401,6 +401,13 @@ The usage/costs endpoints require an Admin API key. Regular API keys will get a 
 Check that the History tab is enabled in configuration. Data is stored in `~/.local/share/plasma-ai-usage-monitor/usage_history.db`.
 
 ## Changelog
+
+### v2.8.1 — Version Sync + Install Reliability
+- Fix stale UI version display by preferring plasmoid metadata version in QML
+- Normalize update checker parsing for prefixed/suffixed version strings
+- Add local install/reload scripts to override stale system package installs
+- Add diagnostics script for repo/local/system version mismatch visibility
+- Add CI/CTest guard to prevent hardcoded semantic versions in QML
 
 ### v2.8.0 — Reliability + Compare Analytics
 - Add `AppInfo.version` singleton and remove hardcoded UI version drift
