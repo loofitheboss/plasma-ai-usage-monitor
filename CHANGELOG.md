@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-02-18
+
+### Added
+- Add 43 new C++ unit tests across 4 test files covering ProviderBackend, SubscriptionToolBackend, UpdateChecker, and UsageDatabase
+- Test budget warning/exceeded signals with dedup validation
+- Test token-based cost estimation with exact and prefix model matching
+- Test generation counter for stale request detection
+- Test disconnect/reconnect signal transitions
+- Test subscription limit warnings, period calculations, and auto-reset
+- Test version property setters and interval clamping in UpdateChecker
+- Test database pruning, CSV/JSON export, summary aggregation, retention clamping, and disabled recording
+
 ## [2.8.2] — 2026-02-16
 
 ### Added

@@ -262,7 +262,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.8.2)
+├── CMakeLists.txt                  # Root build system (v2.9.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -410,6 +410,16 @@ Check that the History tab is enabled in configuration. Data is stored in `~/.lo
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, coding standards, and contribution workflow |
 
 ## Changelog
+
+### v2.9.0 — Test Coverage Expansion
+- Add 43 new C++ unit tests across 4 test files (ProviderBackend, SubscriptionToolBackend, UpdateChecker, UsageDatabase)
+- Test budget warning/exceeded signals with dedup validation
+- Test token-based cost estimation with exact and prefix model matching
+- Test generation counter for stale request detection
+- Test disconnect/reconnect signal transitions
+- Test subscription limit warnings, period calculations, and auto-reset
+- Test version property setters and interval clamping in UpdateChecker
+- Test database pruning, CSV/JSON export, summary aggregation, retention clamping, and disabled recording
 
 ### v2.8.2 — Reliability + Test Hardening
 
