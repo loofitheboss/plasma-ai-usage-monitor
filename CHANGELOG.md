@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-02-19
+
+### Changed
+- Update model pricing tables for all 7 providers to 2026 pricing
+- Reorder Google Gemini pricing by model generation (2.5 → 2.0 → 1.5)
+- Reorder Groq pricing to group Llama models together
+- Sync QML model selector dropdowns with registered C++ pricing
+
+### Added
+- Add `gemini-2.0-flash-lite` pricing ($0.075/$0.30 per 1M tokens)
+- Add `grok-2-mini` pricing ($2.00/$10.00 per 1M tokens)
+- Add `deepseek-coder` pricing ($0.14/$0.28 per 1M tokens)
+- Add Anthropic date-suffixed model pricing (`claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022`)
+- Add Mistral `-latest` alias pricing (`mistral-large-latest`, `mistral-medium-latest`, `mistral-small-latest`, `codestral-latest`)
+- Add Claude 3.7 Sonnet to Anthropic model selector
+- Add Gemini 2.5 Pro and 2.5 Flash (stable) to Google model selector
+- Add Llama 3.1 70B Versatile to Groq model selector
+
+### Fixed
+- Fix duplicate v2.9.0 changelog entry in RPM spec file
+
 ## [2.9.0] — 2026-02-18
 
 ### Added
@@ -200,7 +221,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KWallet integration for secure API key storage
 - KDE notifications for rate limit warnings
 
-[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.8.2...HEAD
+[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.9.0...v3.0.0
+[2.9.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.8.2...v2.9.0
 [2.8.2]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.8.1...v2.8.2
 [2.8.1]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.7.0...v2.8.0

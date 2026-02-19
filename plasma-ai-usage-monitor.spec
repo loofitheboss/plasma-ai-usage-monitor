@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        2.9.0
+Version:        3.0.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -58,6 +58,14 @@ Features:
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
 
 %changelog
+* Wed Feb 19 2026 Loofi <loofi@github.com> - 3.0.0-1
+- Update model pricing tables for all 7 providers (2026 pricing)
+- Add missing pricing: gemini-2.0-flash-lite, grok-2-mini, deepseek-coder
+- Add Mistral -latest alias pricing (mistral-large-latest, etc.)
+- Add Anthropic date-suffixed model pricing (claude-3-5-sonnet-20241022, etc.)
+- Sync QML model dropdowns with C++ pricing tables
+- Add Claude 3.7 Sonnet, Gemini 2.5 Pro/Flash, Llama 3.1 70B to selectors
+
 * Tue Feb 18 2026 Loofi <loofi@github.com> - 2.9.0-1
 - Add 43 new C++ unit tests across ProviderBackend, SubscriptionToolBackend,
   UpdateChecker, and UsageDatabase
@@ -70,12 +78,6 @@ Features:
 - Add provider mocked-HTTP unit tests (OpenAI, Anthropic, DeepSeek)
 - Add subscription monitor unit tests including sync failure diagnostics
 - Add blocking clang-tidy CI gate with compile_commands-based runner
-* Tue Feb 17 2026 Loofi <loofi@github.com> - 2.9.0-1
-- Add 43 new C++ unit tests across ProviderBackend, SubscriptionToolBackend,
-  UpdateChecker, and UsageDatabase
-- Test budget signals, cost estimation, generation counter, state transitions
-- Test subscription limit warnings, period calculations, auto-reset
-- Test version properties, interval clamping, database pruning, export
 
 * Mon Feb 16 2026 Loofi <loofi@github.com> - 2.8.1-1
 - Fix stale UI version display by preferring plasmoid metadata version in QML

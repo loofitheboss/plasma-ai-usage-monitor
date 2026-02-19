@@ -298,6 +298,7 @@ KCM.SimpleKCM {
                 "claude-sonnet-4-20250514",
                 "claude-opus-4-20250514",
                 "claude-haiku-4-20250514",
+                "claude-3-7-sonnet-20250219",
                 "claude-3-5-sonnet-20241022",
                 "claude-3-5-haiku-20241022"
             ]
@@ -396,10 +397,10 @@ KCM.SimpleKCM {
             editable: true
             editText: plasmoid.configuration.googleModel
             model: [
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
                 "gemini-2.0-flash",
                 "gemini-2.0-flash-lite",
-                "gemini-2.5-pro-preview-05-06",
-                "gemini-2.5-flash-preview-04-17",
                 "gemini-1.5-pro",
                 "gemini-1.5-flash"
             ]
@@ -721,6 +722,7 @@ KCM.SimpleKCM {
             editText: plasmoid.configuration.groqModel
             model: [
                 "llama-3.3-70b-versatile",
+                "llama-3.1-70b-versatile",
                 "llama-3.1-8b-instant",
                 "mixtral-8x7b-32768",
                 "gemma2-9b-it"
