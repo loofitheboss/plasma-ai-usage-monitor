@@ -41,6 +41,7 @@ PlasmoidItem {
     property alias openrouter: openrouterBackend
     property alias together: togetherBackend
     property alias cohere: cohereBackend
+    property alias googleveo: googleveoBackend
     property alias usageDb: usageDatabase
 
     // Subscription tool monitors
@@ -160,6 +161,16 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.cohereCustomBaseUrl
         dailyBudget: plasmoid.configuration.cohereDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.cohereMonthlyBudget / 100.0
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
+    }
+
+    GoogleVeoProvider {
+        id: googleveoBackend
+        model: plasmoid.configuration.googleveoModel
+        tier: plasmoid.configuration.googleveoTier
+        customBaseUrl: plasmoid.configuration.googleveoCustomBaseUrl
+        dailyBudget: plasmoid.configuration.googleveoDailyBudget / 100.0
+        monthlyBudget: plasmoid.configuration.googleveoMonthlyBudget / 100.0
         budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
@@ -442,6 +453,15 @@ PlasmoidItem {
             if (cohereBackend.hasApiKey()) cohereBackend.refresh();
         }
     }
+    Timer {
+        id: googleveoRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.googleveoRefreshInterval)
+        running: plasmoid.configuration.googleveoEnabled
+        repeat: true
+        onTriggered: {
+            if (googleveoBackend.hasApiKey()) googleveoBackend.refresh();
+        }
+    }
 
     // Daily prune timer (runs once every 24h)
     Timer {
@@ -483,7 +503,8 @@ PlasmoidItem {
         { name: "xAI / Grok", dbName: "xAI", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" },
         { name: "OpenRouter", dbName: "OpenRouter", configKey: "openrouter", backend: openrouterBackend, enabled: plasmoid.configuration.openrouterEnabled, color: "#6366F1" },
         { name: "Together AI", dbName: "Together", configKey: "together", backend: togetherBackend, enabled: plasmoid.configuration.togetherEnabled, color: "#0EA5E9" },
-        { name: "Cohere", dbName: "Cohere", configKey: "cohere", backend: cohereBackend, enabled: plasmoid.configuration.cohereEnabled, color: "#39D353" }
+        { name: "Cohere", dbName: "Cohere", configKey: "cohere", backend: cohereBackend, enabled: plasmoid.configuration.cohereEnabled, color: "#39D353" },
+        { name: "Google Veo", dbName: "GoogleVeo", configKey: "googleveo", backend: googleveoBackend, enabled: plasmoid.configuration.googleveoEnabled, color: "#EA4335" }
     ]
 
     readonly property var allSubscriptionTools: [
@@ -808,6 +829,7 @@ PlasmoidItem {
         function onDeepseekEnabledChanged() { loadApiKeys(); }
         function onGroqEnabledChanged() { loadApiKeys(); }
         function onXaiEnabledChanged() { loadApiKeys(); }
+        function onGoogleveoEnabledChanged() { loadApiKeys(); }
 
         function onOpenaiModelChanged() { openaiBackend.model = plasmoid.configuration.openaiModel; }
         function onAnthropicModelChanged() { anthropicBackend.model = plasmoid.configuration.anthropicModel; }
@@ -816,6 +838,7 @@ PlasmoidItem {
         function onDeepseekModelChanged() { deepseekBackend.model = plasmoid.configuration.deepseekModel; }
         function onGroqModelChanged() { groqBackend.model = plasmoid.configuration.groqModel; }
         function onXaiModelChanged() { xaiBackend.model = plasmoid.configuration.xaiModel; }
+        function onGoogleveoModelChanged() { googleveoBackend.model = plasmoid.configuration.googleveoModel; }
 
         function onRefreshIntervalChanged() {
             // The per-provider Timer declarations use declarative bindings

@@ -18,6 +18,7 @@ KCM.SimpleKCM {
     property alias cfg_deepseekRefreshInterval: deepseekRefreshSlider.value
     property alias cfg_groqRefreshInterval: groqRefreshSlider.value
     property alias cfg_xaiRefreshInterval: xaiRefreshSlider.value
+    property alias cfg_googleveoRefreshInterval: googleveoRefreshSlider.value
 
     Kirigami.FormLayout {
         anchors.fill: parent
@@ -213,6 +214,23 @@ KCM.SimpleKCM {
             }
             QQC2.Label {
                 text: xaiRefreshSlider.value === 0 ? i18n("Use default") : formatInterval(xaiRefreshSlider.value)
+                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                opacity: 0.7; Layout.alignment: Qt.AlignHCenter
+            }
+        }
+
+        ColumnLayout {
+            Kirigami.FormData.label: i18n("Google Veo:")
+            spacing: 2
+
+            QQC2.Slider {
+                id: googleveoRefreshSlider
+                Layout.fillWidth: true
+                from: 0; to: 1800; stepSize: 60
+                value: plasmoid.configuration.googleveoRefreshInterval
+            }
+            QQC2.Label {
+                text: googleveoRefreshSlider.value === 0 ? i18n("Use default") : formatInterval(googleveoRefreshSlider.value)
                 font.pointSize: Kirigami.Theme.smallFont.pointSize
                 opacity: 0.7; Layout.alignment: Qt.AlignHCenter
             }

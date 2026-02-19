@@ -32,7 +32,8 @@ KCM.SimpleKCM {
         { name: "Mistral AI",    dailyKey: "mistralDailyBudget",   monthlyKey: "mistralMonthlyBudget"   },
         { name: "DeepSeek",      dailyKey: "deepseekDailyBudget",  monthlyKey: "deepseekMonthlyBudget"  },
         { name: "Groq",          dailyKey: "groqDailyBudget",      monthlyKey: "groqMonthlyBudget"      },
-        { name: "xAI / Grok",    dailyKey: "xaiDailyBudget",       monthlyKey: "xaiMonthlyBudget"       }
+        { name: "xAI / Grok",    dailyKey: "xaiDailyBudget",       monthlyKey: "xaiMonthlyBudget"       },
+        { name: "Google Veo",    dailyKey: "googleveoDailyBudget", monthlyKey: "googleveoMonthlyBudget" }
     ]
 
     // Shared formatting functions

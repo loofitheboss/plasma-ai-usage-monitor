@@ -12,6 +12,7 @@
 #include "openrouterprovider.h"
 #include "togetherprovider.h"
 #include "cohereprovider.h"
+#include "googleveoprovider.h"
 #include "usagedatabase.h"
 #include "clipboardhelper.h"
 #include "updatechecker.h"
@@ -45,6 +46,7 @@ void AiUsagePlugin::registerTypes(const char *uri)
     qmlRegisterType<OpenRouterProvider>(uri, 1, 0, "OpenRouterProvider");
     qmlRegisterType<TogetherProvider>(uri, 1, 0, "TogetherProvider");
     qmlRegisterType<CohereProvider>(uri, 1, 0, "CohereProvider");
+    qmlRegisterType<GoogleVeoProvider>(uri, 1, 0, "GoogleVeoProvider");
     qmlRegisterType<UsageDatabase>(uri, 1, 0, "UsageDatabase");
     qmlRegisterType<ClipboardHelper>(uri, 1, 0, "ClipboardHelper");
     qmlRegisterType<UpdateChecker>(uri, 1, 0, "UpdateChecker");

@@ -57,6 +57,11 @@ KCM.SimpleKCM {
     property alias cfg_cohereModel: cohereModelField.text
     property alias cfg_cohereCustomBaseUrl: cohereBaseUrlField.text
 
+    property alias cfg_googleveoEnabled: googleveoSwitch.checked
+    property alias cfg_googleveoModel: googleveoModelField.text
+    property string cfg_googleveoTier: "paid"
+    property alias cfg_googleveoCustomBaseUrl: googleveoBaseUrlField.text
+
     // Track whether the user has actually edited each key field
     property bool openaiKeyDirty: false
     property bool anthropicKeyDirty: false
@@ -68,6 +73,7 @@ KCM.SimpleKCM {
     property bool openrouterKeyDirty: false
     property bool togetherKeyDirty: false
     property bool cohereKeyDirty: false
+    property bool googleveoKeyDirty: false
 
     // ── KWallet Integration ──
     SecretsManager {
@@ -99,7 +105,8 @@ KCM.SimpleKCM {
             { name: "xai", field: xaiKeyField, dirtyProp: "xaiKeyDirty" },
             { name: "openrouter", field: openrouterKeyField, dirtyProp: "openrouterKeyDirty" },
             { name: "together", field: togetherKeyField, dirtyProp: "togetherKeyDirty" },
-            { name: "cohere", field: cohereKeyField, dirtyProp: "cohereKeyDirty" }
+            { name: "cohere", field: cohereKeyField, dirtyProp: "cohereKeyDirty" },
+            { name: "googleveo", field: googleveoKeyField, dirtyProp: "googleveoKeyDirty" }
         ];
 
         for (var i = 0; i < providers.length; i++) {
@@ -124,7 +131,8 @@ KCM.SimpleKCM {
             { name: "xai", field: xaiKeyField, dirty: xaiKeyDirty },
             { name: "openrouter", field: openrouterKeyField, dirty: openrouterKeyDirty },
             { name: "together", field: togetherKeyField, dirty: togetherKeyDirty },
-            { name: "cohere", field: cohereKeyField, dirty: cohereKeyDirty }
+            { name: "cohere", field: cohereKeyField, dirty: cohereKeyDirty },
+            { name: "googleveo", field: googleveoKeyField, dirty: googleveoKeyDirty }
         ];
 
         for (var i = 0; i < providers.length; i++) {
@@ -1199,6 +1207,124 @@ KCM.SimpleKCM {
 
         QQC2.Label {
             visible: cohereBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        // ── Google Veo ──
+        // ══════════════════════════════════════════════
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: i18n("Google Veo")
+        }
+
+        QQC2.Switch {
+            id: googleveoSwitch
+            Kirigami.FormData.label: i18n("Enable:")
+            checked: plasmoid.configuration.googleveoEnabled
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("API Key:")
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.TextField {
+                id: googleveoKeyField
+                enabled: googleveoSwitch.checked
+                echoMode: googleveoKeyVisible.checked ? TextInput.Normal : TextInput.Password
+                placeholderText: i18n("AIza...")
+                Layout.fillWidth: true
+                onTextEdited: providersPage.googleveoKeyDirty = true
+            }
+
+            QQC2.ToolButton {
+                id: googleveoKeyVisible
+                checkable: true; checked: false
+                icon.name: checked ? "password-show-off" : "password-show-on"
+                display: QQC2.AbstractButton.IconOnly
+                QQC2.ToolTip.text: checked ? i18n("Hide key") : i18n("Show key")
+                QQC2.ToolTip.visible: hovered
+            }
+
+            QQC2.ToolButton {
+                icon.name: "edit-clear"
+                enabled: googleveoKeyField.text.length > 0
+                display: QQC2.AbstractButton.IconOnly
+                QQC2.ToolTip.text: i18n("Clear key"); QQC2.ToolTip.visible: hovered
+                onClicked: { googleveoKeyField.text = ""; providersPage.googleveoKeyDirty = true; }
+            }
+        }
+
+        QQC2.Label {
+            visible: googleveoSwitch.checked
+            text: i18n("Monitors Google Veo video generation API connectivity and tier limits")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.6; wrapMode: Text.WordWrap; Layout.fillWidth: true
+        }
+
+        QQC2.ComboBox {
+            id: googleveoModelField
+            Kirigami.FormData.label: i18n("Model:")
+            enabled: googleveoSwitch.checked
+            editable: true
+            editText: plasmoid.configuration.googleveoModel
+            model: [
+                "veo-3",
+                "veo-2"
+            ]
+            onEditTextChanged: plasmoid.configuration.googleveoModel = editText
+            property alias text: googleveoModelField.editText
+        }
+
+        QQC2.ComboBox {
+            id: googleveoTierField
+            Kirigami.FormData.label: i18n("Pricing tier:")
+            enabled: googleveoSwitch.checked
+            model: [
+                { text: i18n("Free"), value: "free" },
+                { text: i18n("Paid (Pay-as-you-go)"), value: "paid" }
+            ]
+            textRole: "text"
+            valueRole: "value"
+            currentIndex: cfg_googleveoTier === "paid" ? 1 : 0
+            onActivated: cfg_googleveoTier = currentValue
+        }
+
+        QQC2.Label {
+            visible: googleveoSwitch.checked && googleveoTierField.currentIndex === 0
+            text: i18n("Free tier has very limited video generation quotas.")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.6; wrapMode: Text.WordWrap; Layout.fillWidth: true
+        }
+
+        QQC2.TextField {
+            id: googleveoBaseUrlField
+            Kirigami.FormData.label: i18n("Custom base URL:")
+            enabled: googleveoSwitch.checked
+            text: plasmoid.configuration.googleveoCustomBaseUrl
+            placeholderText: i18n("Leave empty for default")
+            Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Override the API endpoint for proxies or self-hosted gateways. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(googleveoBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        QQC2.Label {
+            visible: googleveoBaseUrlField.text.toLowerCase().startsWith("http://")
             text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
             color: Kirigami.Theme.negativeTextColor
             font.pointSize: Kirigami.Theme.smallFont.pointSize

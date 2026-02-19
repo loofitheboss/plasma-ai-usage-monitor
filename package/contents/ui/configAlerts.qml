@@ -29,6 +29,7 @@ KCM.SimpleKCM {
     property alias cfg_deepseekNotificationsEnabled: deepseekNotifySwitch.checked
     property alias cfg_groqNotificationsEnabled: groqNotifySwitch.checked
     property alias cfg_xaiNotificationsEnabled: xaiNotifySwitch.checked
+    property alias cfg_googleveoNotificationsEnabled: googleveoNotifySwitch.checked
     property alias cfg_notifyOnUpdate: updateNotifySwitch.checked
     property alias cfg_updateCheckInterval: updateCheckSpinBox.value
 
@@ -201,6 +202,13 @@ KCM.SimpleKCM {
             Kirigami.FormData.label: i18n("xAI / Grok:")
             enabled: alertsSwitch.checked
             checked: plasmoid.configuration.xaiNotificationsEnabled
+        }
+
+        QQC2.Switch {
+            id: googleveoNotifySwitch
+            Kirigami.FormData.label: i18n("Google Veo:")
+            enabled: alertsSwitch.checked
+            checked: plasmoid.configuration.googleveoNotificationsEnabled
         }
 
         // ── Update Notifications ──

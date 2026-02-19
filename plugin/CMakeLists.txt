@@ -14,6 +14,7 @@ set(aiusagemonitor_SRCS
     openrouterprovider.cpp
     togetherprovider.cpp
     cohereprovider.cpp
+    googleveoprovider.cpp
     usagedatabase.cpp
     updatechecker.cpp
     subscriptiontoolbackend.cpp
@@ -39,6 +40,7 @@ set(aiusagemonitor_HDRS
     openrouterprovider.h
     togetherprovider.h
     cohereprovider.h
+    googleveoprovider.h
     usagedatabase.h
     clipboardhelper.h
     updatechecker.h

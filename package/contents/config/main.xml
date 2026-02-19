@@ -46,6 +46,9 @@
         <entry name="cohereRefreshInterval" type="Int">
             <default>0</default>
         </entry>
+        <entry name="googleveoRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
     </group>
 
     <group name="Providers">
@@ -164,6 +167,20 @@
         <entry name="cohereCustomBaseUrl" type="String">
             <default></default>
         </entry>
+
+        <!-- Google Veo -->
+        <entry name="googleveoEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="googleveoModel" type="String">
+            <default>veo-3</default>
+        </entry>
+        <entry name="googleveoTier" type="String">
+            <default>paid</default>
+        </entry>
+        <entry name="googleveoCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
     </group>
 
     <group name="Alerts">
@@ -232,6 +249,9 @@
             <default>true</default>
         </entry>
         <entry name="cohereNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="googleveoNotificationsEnabled" type="Bool">
             <default>true</default>
         </entry>
 
@@ -307,6 +327,12 @@
             <default>0</default>
         </entry>
         <entry name="cohereMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="googleveoDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="googleveoMonthlyBudget" type="Int">
             <default>0</default>
         </entry>
         <entry name="budgetWarningPercent" type="Int">
