@@ -9,6 +9,9 @@
 #include "deepseekprovider.h"
 #include "groqprovider.h"
 #include "xaiprovider.h"
+#include "openrouterprovider.h"
+#include "togetherprovider.h"
+#include "cohereprovider.h"
 #include "usagedatabase.h"
 #include "clipboardhelper.h"
 #include "updatechecker.h"
@@ -39,6 +42,9 @@ void AiUsagePlugin::registerTypes(const char *uri)
     qmlRegisterType<DeepSeekProvider>(uri, 1, 0, "DeepSeekProvider");
     qmlRegisterType<GroqProvider>(uri, 1, 0, "GroqProvider");
     qmlRegisterType<XAIProvider>(uri, 1, 0, "XAIProvider");
+    qmlRegisterType<OpenRouterProvider>(uri, 1, 0, "OpenRouterProvider");
+    qmlRegisterType<TogetherProvider>(uri, 1, 0, "TogetherProvider");
+    qmlRegisterType<CohereProvider>(uri, 1, 0, "CohereProvider");
     qmlRegisterType<UsageDatabase>(uri, 1, 0, "UsageDatabase");
     qmlRegisterType<ClipboardHelper>(uri, 1, 0, "ClipboardHelper");
     qmlRegisterType<UpdateChecker>(uri, 1, 0, "UpdateChecker");

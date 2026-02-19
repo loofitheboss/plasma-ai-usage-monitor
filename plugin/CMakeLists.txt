@@ -11,6 +11,9 @@ set(aiusagemonitor_SRCS
     deepseekprovider.cpp
     groqprovider.cpp
     xaiprovider.cpp
+    openrouterprovider.cpp
+    togetherprovider.cpp
+    cohereprovider.cpp
     usagedatabase.cpp
     updatechecker.cpp
     subscriptiontoolbackend.cpp
@@ -33,6 +36,9 @@ set(aiusagemonitor_HDRS
     deepseekprovider.h
     groqprovider.h
     xaiprovider.h
+    openrouterprovider.h
+    togetherprovider.h
+    cohereprovider.h
     usagedatabase.h
     clipboardhelper.h
     updatechecker.h

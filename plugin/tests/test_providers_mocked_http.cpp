@@ -8,8 +8,11 @@
 #include <QUrl>
 
 #include "anthropicprovider.h"
+#include "cohereprovider.h"
 #include "deepseekprovider.h"
 #include "openaiprovider.h"
+#include "openrouterprovider.h"
+#include "togetherprovider.h"
 
 class HttpStubServer : public QObject
 {
@@ -114,6 +117,9 @@ private Q_SLOTS:
     void openAiAuthError();
     void anthropicRateLimitHeaders();
     void deepSeekUsageAndBalance();
+    void openRouterUsageAndCredits();
+    void togetherAiUsageAndHeaders();
+    void cohereUsageAndHeaders();
 };
 
 void ProvidersMockedHttpTest::openAiSuccessAndHeaders()
@@ -290,6 +296,151 @@ void ProvidersMockedHttpTest::deepSeekUsageAndBalance()
     QCOMPARE(provider.rateLimitTokens(), 6000);
     QCOMPARE(provider.rateLimitTokensRemaining(), 5800);
     QCOMPARE(provider.balance(), 13.0);
+    QVERIFY(provider.isConnected());
+}
+
+void ProvidersMockedHttpTest::openRouterUsageAndCredits()
+{
+    HttpStubServer server;
+    QVERIFY(server.listen());
+
+    const QByteArray usageBody = R"JSON({
+        "usage": {
+            "prompt_tokens": 200,
+            "completion_tokens": 80
+        }
+    })JSON";
+
+    const QByteArray creditsBody = R"JSON({
+        "data": {
+            "label": "my-key",
+            "usage": 3.50,
+            "limit": 25.00
+        }
+    })JSON";
+
+    server.setResponse(
+        QStringLiteral("POST"),
+        QStringLiteral("/chat/completions"),
+        200,
+        usageBody,
+        {
+            {"x-ratelimit-limit-requests", "200"},
+            {"x-ratelimit-remaining-requests", "180"},
+            {"x-ratelimit-limit-tokens", "10000"},
+            {"x-ratelimit-remaining-tokens", "9500"},
+            {"x-ratelimit-reset-requests", "15s"},
+        });
+    server.setResponse(QStringLiteral("GET"), QStringLiteral("/auth/key"), 200, creditsBody);
+
+    OpenRouterProvider provider;
+    provider.setApiKey(QStringLiteral("test-key"));
+    provider.setCustomBaseUrl(server.baseUrl());
+
+    QSignalSpy dataSpy(&provider, &ProviderBackend::dataUpdated);
+    provider.refresh();
+
+    QTRY_VERIFY_WITH_TIMEOUT(dataSpy.count() >= 1, 3000);
+
+    QCOMPARE(provider.inputTokens(), 200);
+    QCOMPARE(provider.outputTokens(), 80);
+    QCOMPARE(provider.requestCount(), 1);
+    QCOMPARE(provider.rateLimitRequests(), 200);
+    QCOMPARE(provider.rateLimitRequestsRemaining(), 180);
+    QCOMPARE(provider.rateLimitTokens(), 10000);
+    QCOMPARE(provider.rateLimitTokensRemaining(), 9500);
+    QCOMPARE(provider.rateLimitResetTime(), QStringLiteral("15s"));
+    QCOMPARE(provider.credits(), 21.50);
+    QVERIFY(provider.isConnected());
+
+    QVERIFY(server.hitCount(QStringLiteral("/chat/completions")) >= 1);
+    QVERIFY(server.hitCount(QStringLiteral("/auth/key")) >= 1);
+}
+
+void ProvidersMockedHttpTest::togetherAiUsageAndHeaders()
+{
+    HttpStubServer server;
+    QVERIFY(server.listen());
+
+    const QByteArray usageBody = R"JSON({
+        "usage": {
+            "prompt_tokens": 50,
+            "completion_tokens": 30
+        }
+    })JSON";
+
+    server.setResponse(
+        QStringLiteral("POST"),
+        QStringLiteral("/chat/completions"),
+        200,
+        usageBody,
+        {
+            {"x-ratelimit-limit-requests", "60"},
+            {"x-ratelimit-remaining-requests", "55"},
+            {"x-ratelimit-limit-tokens", "4000"},
+            {"x-ratelimit-remaining-tokens", "3800"},
+            {"x-ratelimit-reset-requests", "60s"},
+        });
+
+    TogetherProvider provider;
+    provider.setApiKey(QStringLiteral("test-key"));
+    provider.setCustomBaseUrl(server.baseUrl());
+
+    QSignalSpy dataSpy(&provider, &ProviderBackend::dataUpdated);
+    provider.refresh();
+
+    QTRY_VERIFY_WITH_TIMEOUT(dataSpy.count() >= 1, 3000);
+
+    QCOMPARE(provider.inputTokens(), 50);
+    QCOMPARE(provider.outputTokens(), 30);
+    QCOMPARE(provider.requestCount(), 1);
+    QCOMPARE(provider.rateLimitRequests(), 60);
+    QCOMPARE(provider.rateLimitRequestsRemaining(), 55);
+    QCOMPARE(provider.rateLimitTokens(), 4000);
+    QCOMPARE(provider.rateLimitTokensRemaining(), 3800);
+    QVERIFY(provider.isConnected());
+}
+
+void ProvidersMockedHttpTest::cohereUsageAndHeaders()
+{
+    HttpStubServer server;
+    QVERIFY(server.listen());
+
+    const QByteArray usageBody = R"JSON({
+        "usage": {
+            "prompt_tokens": 75,
+            "completion_tokens": 25
+        }
+    })JSON";
+
+    server.setResponse(
+        QStringLiteral("POST"),
+        QStringLiteral("/chat/completions"),
+        200,
+        usageBody,
+        {
+            {"x-ratelimit-limit-requests", "40"},
+            {"x-ratelimit-remaining-requests", "35"},
+            {"x-ratelimit-limit-tokens", "8000"},
+            {"x-ratelimit-remaining-tokens", "7700"},
+        });
+
+    CohereProvider provider;
+    provider.setApiKey(QStringLiteral("test-key"));
+    provider.setCustomBaseUrl(server.baseUrl());
+
+    QSignalSpy dataSpy(&provider, &ProviderBackend::dataUpdated);
+    provider.refresh();
+
+    QTRY_VERIFY_WITH_TIMEOUT(dataSpy.count() >= 1, 3000);
+
+    QCOMPARE(provider.inputTokens(), 75);
+    QCOMPARE(provider.outputTokens(), 25);
+    QCOMPARE(provider.requestCount(), 1);
+    QCOMPARE(provider.rateLimitRequests(), 40);
+    QCOMPARE(provider.rateLimitRequestsRemaining(), 35);
+    QCOMPARE(provider.rateLimitTokens(), 8000);
+    QCOMPARE(provider.rateLimitTokensRemaining(), 7700);
     QVERIFY(provider.isConnected());
 }
 

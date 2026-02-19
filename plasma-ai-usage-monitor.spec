@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        3.0.0
+Version:        3.1.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -58,6 +58,14 @@ Features:
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
 
 %changelog
+* Thu Feb 20 2026 Loofi <loofi@github.com> - 3.1.0-1
+- Add OpenRouter provider with 22-model pricing and credits balance endpoint
+- Add Together AI provider with 12-model pricing (Llama, Qwen, DeepSeek, Mixtral, Gemma)
+- Add Cohere provider with 7-model pricing via OpenAI-compatible endpoint
+- Add provider config UI sections with model selectors and API key management
+- Add per-provider refresh timers, notification, and budget controls
+- Add 3 new mocked-HTTP unit tests for new providers
+
 * Wed Feb 19 2026 Loofi <loofi@github.com> - 3.0.0-1
 - Update model pricing tables for all 7 providers (2026 pricing)
 - Add missing pricing: gemini-2.0-flash-lite, grok-2-mini, deepseek-coder

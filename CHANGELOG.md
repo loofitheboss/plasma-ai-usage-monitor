@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-02-20
+
+### Added
+- Add OpenRouter provider with 22-model pricing and credits balance endpoint
+- Add Together AI provider with 12-model pricing (Llama, Qwen, DeepSeek, Mixtral, Gemma)
+- Add Cohere provider with 7-model pricing via OpenAI-compatible endpoint
+- Add configProviders.qml sections for all 3 new providers with model selectors, API key management, and custom base URL support
+- Add per-provider refresh timers, notification toggles, and budget controls for OpenRouter, Together AI, and Cohere
+- Add unit tests for OpenRouter (usage + credits), Together AI, and Cohere providers
+
 ## [3.0.0] — 2026-02-19
 
 ### Changed

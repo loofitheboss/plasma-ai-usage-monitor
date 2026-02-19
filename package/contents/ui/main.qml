@@ -38,6 +38,9 @@ PlasmoidItem {
     property alias deepseek: deepseekBackend
     property alias groq: groqBackend
     property alias xai: xaiBackend
+    property alias openrouter: openrouterBackend
+    property alias together: togetherBackend
+    property alias cohere: cohereBackend
     property alias usageDb: usageDatabase
 
     // Subscription tool monitors
@@ -130,6 +133,33 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.xaiCustomBaseUrl
         dailyBudget: plasmoid.configuration.xaiDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.xaiMonthlyBudget / 100.0
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
+    }
+
+    OpenRouterProvider {
+        id: openrouterBackend
+        model: plasmoid.configuration.openrouterModel
+        customBaseUrl: plasmoid.configuration.openrouterCustomBaseUrl
+        dailyBudget: plasmoid.configuration.openrouterDailyBudget / 100.0
+        monthlyBudget: plasmoid.configuration.openrouterMonthlyBudget / 100.0
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
+    }
+
+    TogetherProvider {
+        id: togetherBackend
+        model: plasmoid.configuration.togetherModel
+        customBaseUrl: plasmoid.configuration.togetherCustomBaseUrl
+        dailyBudget: plasmoid.configuration.togetherDailyBudget / 100.0
+        monthlyBudget: plasmoid.configuration.togetherMonthlyBudget / 100.0
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
+    }
+
+    CohereProvider {
+        id: cohereBackend
+        model: plasmoid.configuration.cohereModel
+        customBaseUrl: plasmoid.configuration.cohereCustomBaseUrl
+        dailyBudget: plasmoid.configuration.cohereDailyBudget / 100.0
+        monthlyBudget: plasmoid.configuration.cohereMonthlyBudget / 100.0
         budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
@@ -385,6 +415,33 @@ PlasmoidItem {
             if (xaiBackend.hasApiKey()) xaiBackend.refresh();
         }
     }
+    Timer {
+        id: openrouterRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.openrouterRefreshInterval)
+        running: plasmoid.configuration.openrouterEnabled
+        repeat: true
+        onTriggered: {
+            if (openrouterBackend.hasApiKey()) openrouterBackend.refresh();
+        }
+    }
+    Timer {
+        id: togetherRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.togetherRefreshInterval)
+        running: plasmoid.configuration.togetherEnabled
+        repeat: true
+        onTriggered: {
+            if (togetherBackend.hasApiKey()) togetherBackend.refresh();
+        }
+    }
+    Timer {
+        id: cohereRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.cohereRefreshInterval)
+        running: plasmoid.configuration.cohereEnabled
+        repeat: true
+        onTriggered: {
+            if (cohereBackend.hasApiKey()) cohereBackend.refresh();
+        }
+    }
 
     // Daily prune timer (runs once every 24h)
     Timer {
@@ -423,7 +480,10 @@ PlasmoidItem {
         { name: "Mistral AI", dbName: "Mistral", configKey: "mistral", backend: mistralBackend, enabled: plasmoid.configuration.mistralEnabled, color: "#FF7000" },
         { name: "DeepSeek", dbName: "DeepSeek", configKey: "deepseek", backend: deepseekBackend, enabled: plasmoid.configuration.deepseekEnabled, color: "#5B6EE1" },
         { name: "Groq", dbName: "Groq", configKey: "groq", backend: groqBackend, enabled: plasmoid.configuration.groqEnabled, color: "#F55036" },
-        { name: "xAI / Grok", dbName: "xAI", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" }
+        { name: "xAI / Grok", dbName: "xAI", configKey: "xai", backend: xaiBackend, enabled: plasmoid.configuration.xaiEnabled, color: "#1DA1F2" },
+        { name: "OpenRouter", dbName: "OpenRouter", configKey: "openrouter", backend: openrouterBackend, enabled: plasmoid.configuration.openrouterEnabled, color: "#6366F1" },
+        { name: "Together AI", dbName: "Together", configKey: "together", backend: togetherBackend, enabled: plasmoid.configuration.togetherEnabled, color: "#0EA5E9" },
+        { name: "Cohere", dbName: "Cohere", configKey: "cohere", backend: cohereBackend, enabled: plasmoid.configuration.cohereEnabled, color: "#39D353" }
     ]
 
     readonly property var allSubscriptionTools: [

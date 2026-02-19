@@ -7,7 +7,10 @@ set(TEST_PROVIDER_SRC
     ${CMAKE_SOURCE_DIR}/plugin/openaicompatibleprovider.cpp
     ${CMAKE_SOURCE_DIR}/plugin/openaiprovider.cpp
     ${CMAKE_SOURCE_DIR}/plugin/anthropicprovider.cpp
+    ${CMAKE_SOURCE_DIR}/plugin/cohereprovider.cpp
     ${CMAKE_SOURCE_DIR}/plugin/deepseekprovider.cpp
+    ${CMAKE_SOURCE_DIR}/plugin/openrouterprovider.cpp
+    ${CMAKE_SOURCE_DIR}/plugin/togetherprovider.cpp
 )
 
 set(TEST_SUBSCRIPTION_SRC
