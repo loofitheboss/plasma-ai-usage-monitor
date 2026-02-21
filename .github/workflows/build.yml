@@ -25,6 +25,7 @@ jobs:
             qt6-qtbase-devel qt6-qtdeclarative-devel \
             libplasma-devel \
             kf6-kwallet-devel kf6-ki18n-devel kf6-knotifications-devel \
+            kf6-kcoreaddons-devel \
             clang-tools-extra \
             git findutils grep
 
