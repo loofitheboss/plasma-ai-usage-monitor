@@ -9,3 +9,7 @@ cmake_install.cmake
 Makefile
 *_autogen/
 .vscode/
+
+# Claude Code temp directories
+tmpclaude-*
+.tmp-*.log

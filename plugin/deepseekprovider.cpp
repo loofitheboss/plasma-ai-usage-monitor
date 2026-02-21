@@ -71,7 +71,7 @@ void DeepSeekProvider::onBalanceReply(QNetworkReply *reply)
         double totalBalance = 0.0;
         for (const QJsonValue &bal : balances) {
             QJsonObject b = bal.toObject();
-            totalBalance += b.value(QStringLiteral("total_balance")).toString().toDouble();
+            totalBalance += b.value(QStringLiteral("total_balance")).toDouble();
         }
         // Store remaining balance separately — this is NOT spending
         m_balance = totalBalance;
