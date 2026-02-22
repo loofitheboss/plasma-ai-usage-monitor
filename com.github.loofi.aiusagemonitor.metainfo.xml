@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="addon">
+  <id>com.github.loofi.aiusagemonitor</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>AI Usage Monitor</name>
+  <summary>KDE Plasma widget to monitor AI API usage, rate limits, and costs</summary>
+
+  <description>
+    <p>
+      AI Usage Monitor is a Plasma 6 widget for tracking AI provider usage, estimated
+      cost, budget thresholds, and subscription-tool limits from the panel.
+    </p>
+    <p>
+      It supports multiple providers, local history, export options, and notification
+      controls designed for day-to-day API usage visibility.
+    </p>
+  </description>
+
+  <extends>org.kde.plasma.desktop</extends>
+
+  <url type="homepage">https://github.com/loofitheboss/plasma-ai-usage-monitor</url>
+  <url type="bugtracker">https://github.com/loofitheboss/plasma-ai-usage-monitor/issues</url>
+
+  <releases>
+    <release version="3.2.0" date="2026-02-22"/>
+  </releases>
+
+  <categories>
+    <category>System</category>
+    <category>Utility</category>
+  </categories>
+</component>

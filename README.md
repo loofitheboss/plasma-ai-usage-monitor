@@ -21,14 +21,14 @@
 
 A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, and costs across multiple providers. Sits in your panel as a compact icon with a colored status badge and expands into a detailed popup with per-provider stats, usage history charts, and budget tracking. Also tracks subscription-based AI coding tool usage limits for Claude Code, Codex CLI, and GitHub Copilot.
 
-**Supported providers:** OpenAI, Anthropic (Claude), Google Gemini, Mistral AI, DeepSeek, Groq, xAI (Grok)
+**Supported providers:** OpenAI, Anthropic (Claude), Google Gemini, Mistral AI, DeepSeek, Groq, xAI (Grok), OpenRouter, Together AI, Cohere
 
 **Supported subscription tools:** Claude Code, OpenAI Codex CLI, GitHub Copilot
 
 ## Features
 
 - **Real-time monitoring** — Periodic background polling with configurable per-provider refresh intervals (default 5 min) and manual refresh
-- **7 AI providers** — OpenAI, Anthropic, Google Gemini, Mistral AI, DeepSeek, Groq, xAI/Grok
+- **10 AI providers** — OpenAI, Anthropic, Google Gemini, Mistral AI, DeepSeek, Groq, xAI/Grok, OpenRouter, Together AI, Cohere
 - **Token usage tracking** — Input/output tokens used, requests made, quota/tier limits
 - **Cost tracking** — Dollar spending with daily and monthly cost breakdowns; automatic token-based cost estimation for providers without billing APIs (~30 models with pricing tables)
 - **Budget management** — Per-provider daily/monthly budgets with configurable warning thresholds and notifications when budgets are exceeded
@@ -133,6 +133,22 @@ kf6-knotifications-devel
 ```
 
 ## Installation
+
+### Install from COPR (Recommended)
+
+```bash
+sudo dnf copr enable loofitheboss/plasma-ai-usage-monitor
+sudo dnf install plasma-ai-usage-monitor
+```
+
+This installs both the QML plasmoid package and the C++ plugin. After installation, log out and back in (or run `plasmashell --replace &`), then add the widget from "Add Widgets...".
+
+To uninstall:
+
+```bash
+sudo dnf remove plasma-ai-usage-monitor
+sudo dnf copr remove loofitheboss/plasma-ai-usage-monitor
+```
 
 ### Quick Install (Fedora)
 
@@ -262,7 +278,7 @@ Each provider has:
 
 ```
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v2.9.0)
+├── CMakeLists.txt                  # Root build system (v3.2.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events
@@ -291,7 +307,7 @@ plasma-ai-usage-monitor/
 └── plugin/                         # C++ QML plugin
     ├── CMakeLists.txt
     ├── qmldir                      # QML module registration
-    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (16 types)
+    ├── aiusageplugin.{h,cpp}       # QQmlExtensionPlugin (20 types)
     ├── appinfo.{h,cpp}             # App version singleton for QML (build-version source of truth)
     ├── secretsmanager.{h,cpp}      # KWallet wrapper
     ├── clipboardhelper.h            # Clipboard copy/paste helper
@@ -304,6 +320,10 @@ plasma-ai-usage-monitor/
     ├── deepseekprovider.{h,cpp}    # DeepSeek (extends OpenAICompatibleProvider)
     ├── groqprovider.{h,cpp}        # Groq (extends OpenAICompatibleProvider)
     ├── xaiprovider.{h,cpp}         # xAI/Grok (extends OpenAICompatibleProvider)
+    ├── openrouterprovider.{h,cpp}  # OpenRouter (extends OpenAICompatibleProvider)
+    ├── togetherprovider.{h,cpp}    # Together AI (extends OpenAICompatibleProvider)
+    ├── cohereprovider.{h,cpp}      # Cohere (extends OpenAICompatibleProvider)
+    ├── googleveoprovider.{h,cpp}   # Google Veo video generation monitor
     ├── subscriptiontoolbackend.{h,cpp}   # Abstract base for subscription tools
     ├── claudecodemonitor.{h,cpp}         # Claude Code usage monitor
     ├── codexclimonitor.{h,cpp}           # Codex CLI usage monitor
@@ -315,7 +335,7 @@ plasma-ai-usage-monitor/
 
 ### C++ Plugin
 
-The QML plugin (`com.github.loofi.aiusagemonitor`) provides 16 types:
+The QML plugin (`com.github.loofi.aiusagemonitor`) provides 20 types:
 
 - **`AppInfo`** — QML singleton exposing the build version (`AppInfo.version`) so update checks and About pages stay in sync with CMake/package metadata.
 - **`SecretsManager`** — Wraps KWallet for secure API key storage. Uses wallet folder `"ai-usage-monitor"` with async open and a pending operations queue.
@@ -328,6 +348,10 @@ The QML plugin (`com.github.loofi.aiusagemonitor`) provides 16 types:
 - **`DeepSeekProvider`** — Extends `OpenAICompatibleProvider`. Also fetches prepaid balance from `/user/balance`. Registers pricing for deepseek-chat and deepseek-reasoner.
 - **`GroqProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 5 Groq models.
 - **`XAIProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for grok-3, grok-3-mini, grok-2.
+- **`OpenRouterProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 22 models. Fetches credits balance.
+- **`TogetherProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 12 models (Llama, Qwen, DeepSeek, Mixtral, Gemma).
+- **`CohereProvider`** — Extends `OpenAICompatibleProvider`. Registers pricing for 7 Cohere models.
+- **`GoogleVeoProvider`** — Google Veo video generation usage monitor.
 - **`ClipboardHelper`** — Simple helper class for copying text to the system clipboard (replaces the previous TextArea workaround).
 - **`UsageDatabase`** — SQLite persistence with WAL mode, configurable retention, auto-pruning, CSV/JSON export, and aggregated provider/tool series APIs for compare analytics.
 - **`SubscriptionToolBackend`** (abstract) — Base class for subscription-based AI coding tool monitors. Tracks usage counts against fixed limits with rolling time windows (5-hour, daily, weekly, monthly). Supports dual primary/secondary periods, automatic period resets, and 80% limit warnings.
@@ -337,7 +361,7 @@ The QML plugin (`com.github.loofi.aiusagemonitor`) provides 16 types:
 
 ### QML Frontend
 
-- **`main.qml`** — Instantiates 7 C++ API backends + 3 subscription tool monitors, manages per-provider refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase. Uses `allProviders` and `allSubscriptionTools` arrays to drive tooltips, refresh, and notification routing.
+- **`main.qml`** — Instantiates 10 C++ API backends + 3 subscription tool monitors, manages per-provider refresh timers, handles KWallet lifecycle, fires KDE notifications with cooldown and DND support, records snapshots to UsageDatabase. Uses `allProviders` and `allSubscriptionTools` arrays to drive tooltips, refresh, and notification routing.
 - **`CompactRepresentation.qml`** — Panel icon with 3 display modes (icon with status badge, cost display, provider count), smooth animations, and screen reader accessibility
 - **`FullRepresentation.qml`** — Popup with status summary bar, tabbed Live/History view, data-driven provider cards via Repeater, subscription tool cards section, detail history, compare mode (providers/tools + metrics), responsive history controls, loading/empty states, and export buttons
 - **`MultiSeriesChart.qml`** — Multi-line comparison chart with compact legend chips, hover crosshair, and ranked per-series tooltip values
@@ -373,6 +397,18 @@ A standard API key from [console.groq.com/keys](https://console.groq.com/keys).
 ### xAI / Grok
 
 A standard API key from [console.x.ai](https://console.x.ai).
+
+### OpenRouter
+
+A standard API key from [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys).
+
+### Together AI
+
+A standard API key from [api.together.ai/settings/api-keys](https://api.together.ai/settings/api-keys).
+
+### Cohere
+
+A standard API key from [dashboard.cohere.com/api-keys](https://dashboard.cohere.com/api-keys).
 
 ## RPM Packaging
 
@@ -411,22 +447,21 @@ Check that the History tab is enabled in configuration. Data is stored in `~/.lo
 
 ## Changelog
 
-### v2.9.0 — Test Coverage Expansion
-- Add 43 new C++ unit tests across 4 test files (ProviderBackend, SubscriptionToolBackend, UpdateChecker, UsageDatabase)
-- Test budget warning/exceeded signals with dedup validation
-- Test token-based cost estimation with exact and prefix model matching
-- Test generation counter for stale request detection
-- Test disconnect/reconnect signal transitions
-- Test subscription limit warnings, period calculations, and auto-reset
-- Test version property setters and interval clamping in UpdateChecker
-- Test database pruning, CSV/JSON export, summary aggregation, retention clamping, and disabled recording
+### v3.2.0 — AppStream & COPR Packaging
+- Add AppStream metainfo for KDE Discover and AppStream catalogs
+- Add COPR build infrastructure for Fedora package distribution
+- Add `.plasmoid` archive as GitHub Release artifact
+- Add AppStream validation in CI and RPM spec
 
-### v2.8.2 — Reliability + Test Hardening
+### v3.1.0 — New Providers (OpenRouter, Together AI, Cohere)
+- Add OpenRouter provider with 22-model pricing and credits balance
+- Add Together AI provider with 12-model pricing
+- Add Cohere provider with 7-model pricing
+- Add unit tests for all 3 new providers
 
-- Improve Browser Sync status diagnostics with actionable connection messages
-- Add provider mocked-HTTP unit tests (OpenAI, Anthropic, DeepSeek)
-- Add subscription monitor unit tests (plan defaults, install detection, sync diagnostics)
-- Add blocking `clang-tidy` CI gate with repository runner script
+### v3.0.0 — 2026 Pricing Update
+- Update model pricing tables for all providers to 2026 pricing
+- Add new models for Anthropic, Google, Mistral, Groq, and xAI
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 

@@ -1,7 +1,7 @@
 # Roadmap — Plasma AI Usage Monitor
 
-> **Current version:** v3.1.0 (10 providers, 3 subscription tools, browser sync, compare analytics)
-> **Last updated:** 2026-02-20
+> **Current version:** v3.2.0 (10 providers, 3 subscription tools, browser sync, compare analytics, AppStream/COPR packaging)
+> **Last updated:** 2026-02-22
 
 ---
 
@@ -287,6 +287,7 @@
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v3.2.0 | 2026-02-22 | AppStream metainfo, COPR build infra, release artifact and packaging validation |
 | v3.1.0 | 2026-02-20 | OpenRouter, Together AI, Cohere providers |
 | v3.0.0 | 2026-02-19 | 2026 pricing update, new models for all providers |
 | v2.9.0 | 2026-02-18 | 43 new C++ unit tests across 4 test files |

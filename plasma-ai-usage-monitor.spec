@@ -1,10 +1,10 @@
 Name:           plasma-ai-usage-monitor
-Version:        3.1.0
+Version:        3.2.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
 URL:            https://github.com/loofitheboss/plasma-ai-usage-monitor
-Source0:        %{name}-%{version}.tar.gz
+Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:  cmake >= 3.16
 BuildRequires:  extra-cmake-modules
@@ -15,6 +15,8 @@ BuildRequires:  libplasma-devel
 BuildRequires:  kf6-kwallet-devel
 BuildRequires:  kf6-ki18n-devel
 BuildRequires:  kf6-knotifications-devel
+BuildRequires:  libappstream-glib
+BuildRequires:  qt6-qtbase-private-devel
 
 Requires:       plasma-workspace >= 6.0
 Requires:       kf6-kwallet
@@ -26,7 +28,7 @@ Requires:       qt6-qtbase-sql
 A native KDE Plasma 6 plasmoid that monitors AI API token usage,
 rate limits, costs, and budgets across multiple providers including
 OpenAI, Anthropic (Claude), Google (Gemini), Mistral AI, DeepSeek,
-Groq, and xAI (Grok).
+Groq, xAI (Grok), OpenRouter, Together AI, and Cohere.
 
 Features:
 - Real-time rate limit monitoring for all providers
@@ -52,12 +54,27 @@ Features:
 %install
 %cmake_install
 
+%check
+%ctest
+appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/com.github.loofi.aiusagemonitor.metainfo.xml
+
 %files
+%license LICENSE
+%doc README.md CHANGELOG.md
 %{_datadir}/plasma/plasmoids/com.github.loofi.aiusagemonitor/
 %{_libdir}/qt6/qml/com/github/loofi/aiusagemonitor/
 %{_datadir}/knotifications6/plasma_applet_com.github.loofi.aiusagemonitor.notifyrc
+%{_datadir}/metainfo/com.github.loofi.aiusagemonitor.metainfo.xml
 
 %changelog
+* Sun Feb 22 2026 Loofi <loofi@github.com> - 3.2.0-1
+- Add AppStream metainfo for KDE Discover and AppStream catalogs
+- Add COPR build infrastructure (.copr/Makefile, scripts/build_srpm.sh)
+- Add .plasmoid archive to GitHub Release artifacts
+- Add AppStream validation to release CI and RPM spec
+- Update README with COPR install instructions
+- Extend version consistency check to cover metainfo XML
+
 * Thu Feb 20 2026 Loofi <loofi@github.com> - 3.1.0-1
 - Add OpenRouter provider with 22-model pricing and credits balance endpoint
 - Add Together AI provider with 12-model pricing (Llama, Qwen, DeepSeek, Mixtral, Gemma)
