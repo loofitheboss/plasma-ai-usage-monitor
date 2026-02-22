@@ -52,16 +52,19 @@ A native KDE Plasma 6 plasmoid that monitors AI API token usage, rate limits, an
 In addition to API providers, the widget tracks usage limits for subscription-based AI coding tools:
 
 ### Claude Code
+
 - Monitors `~/.claude/` directory for activity via filesystem watcher
 - Plans: **Pro** (45/5h, 225/week), **Max 5x** (225/5h, 1125/week), **Max 20x** (900/5h, 4500/week)
 - Dual limits: 5-hour session window + weekly rolling window
 
 ### Codex CLI
+
 - Monitors `~/.codex/` directory for activity via filesystem watcher
 - Plans: **Plus** (45/5h), **Pro** (300/5h), **Business** (45/5h)
 - Single 5-hour rolling window
 
 ### GitHub Copilot
+
 - Tracks monthly premium request limits (resets 1st of each month UTC)
 - Plans: **Free** (50/mo), **Pro** (300/mo), **Pro+** (1500/mo), **Business** (300/mo), **Enterprise** (1000/mo)
 - Optional GitHub API integration for organization-level seat metrics (requires PAT with `manage_billing:copilot` scope)
@@ -119,7 +122,7 @@ Optionally sync real-time usage data by reading session cookies from your Firefo
 
 ### Build Dependencies (Fedora)
 
-```
+```text
 cmake
 extra-cmake-modules
 gcc-c++
@@ -187,11 +190,13 @@ sudo cmake --install .
 5. Right-click the widget > **Configure** to add your API keys
 
 To test without adding to a panel:
+
 ```bash
 plasmawindowed com.github.loofi.aiusagemonitor
 ```
 
 If the widget doesn't appear after installation:
+
 ```bash
 plasmashell --replace &
 ```
@@ -234,6 +239,7 @@ Right-click the widget and select **Configure** to access six settings tabs:
 ### Providers
 
 Each provider has:
+
 - **Enable/disable** toggle
 - **API key** field — Keys are stored in KWallet. Use the eye icon to show/hide, and the clear button to remove a key.
 - **Model selector** — Choose which model to query (e.g., `gpt-4o`, `claude-sonnet-4-20250514`, `gemini-2.0-flash`, `mistral-large-latest`, `deepseek-chat`, `llama-3.3-70b-versatile`, `grok-3`)
@@ -276,7 +282,7 @@ Each provider has:
 
 ## Architecture
 
-```
+```text
 plasma-ai-usage-monitor/
 ├── CMakeLists.txt                  # Root build system (v3.2.0)
 ├── install.sh                      # Build & install script
@@ -421,6 +427,7 @@ rpmbuild -ba plasma-ai-usage-monitor.spec
 ## Troubleshooting
 
 **Widget doesn't appear after install:**
+
 ```bash
 plasmashell --replace &
 ```
@@ -448,18 +455,21 @@ Check that the History tab is enabled in configuration. Data is stored in `~/.lo
 ## Changelog
 
 ### v3.2.0 — AppStream & COPR Packaging
+
 - Add AppStream metainfo for KDE Discover and AppStream catalogs
 - Add COPR build infrastructure for Fedora package distribution
 - Add `.plasmoid` archive as GitHub Release artifact
 - Add AppStream validation in CI and RPM spec
 
 ### v3.1.0 — New Providers (OpenRouter, Together AI, Cohere)
+
 - Add OpenRouter provider with 22-model pricing and credits balance
 - Add Together AI provider with 12-model pricing
 - Add Cohere provider with 7-model pricing
 - Add unit tests for all 3 new providers
 
 ### v3.0.0 — 2026 Pricing Update
+
 - Update model pricing tables for all providers to 2026 pricing
 - Add new models for Anthropic, Google, Mistral, Groq, and xAI
 
