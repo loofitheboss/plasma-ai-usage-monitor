@@ -180,6 +180,7 @@ PlasmoidItem {
     BrowserCookieExtractor {
         id: browserCookies
         browserType: plasmoid.configuration.browserSyncBrowser
+        selectedFirefoxProfile: plasmoid.configuration.browserSyncProfile
     }
 
     // Browser sync timer
@@ -830,6 +831,9 @@ PlasmoidItem {
         function onGroqEnabledChanged() { loadApiKeys(); }
         function onXaiEnabledChanged() { loadApiKeys(); }
         function onGoogleveoEnabledChanged() { loadApiKeys(); }
+        function onBrowserSyncProfileChanged() {
+            browserCookies.selectedFirefoxProfile = plasmoid.configuration.browserSyncProfile;
+        }
 
         function onOpenaiModelChanged() { openaiBackend.model = plasmoid.configuration.openaiModel; }
         function onAnthropicModelChanged() { anthropicBackend.model = plasmoid.configuration.anthropicModel; }

@@ -33,6 +33,9 @@ sudo cmake --install build
 # Or use the install script
 ./install.sh
 
+# Or run guided bootstrap + dependency checks
+./scripts/install_bootstrap.sh --method source --install-missing
+
 # Or upgrade the plasmoid only in your user profile (no sudo)
 ./scripts/install_local_plasmoid.sh
 ```

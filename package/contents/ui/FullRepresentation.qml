@@ -22,9 +22,13 @@ PlasmaExtras.Representation {
     property date lastQueryFrom: new Date(0)
     property date lastQueryTo: new Date(0)
     property bool historyLoading: false
+    property int onboardingStep: 0
     readonly property bool narrowPopup: width < Kirigami.Units.gridUnit * 22
 
     readonly property bool compareMode: historyModeCombo.currentValue === "compare"
+    readonly property bool onboardingVisible: !hasAnyProvider()
+        && !plasmoid.configuration.setupWizardCompleted
+        && !plasmoid.configuration.setupWizardDismissed
 
     header: PlasmaExtras.PlasmoidHeading {
         RowLayout {
@@ -61,18 +65,115 @@ PlasmaExtras.Representation {
         anchors.fill: parent
         spacing: 0
 
-        PlasmaExtras.PlaceholderMessage {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: !hasAnyProvider()
-            iconName: "preferences-desktop-notification"
-            text: i18n("Welcome to AI Usage Monitor")
-            explanation: i18n("Track your AI API usage, costs, and rate limits across multiple providers.\nOpen settings to add your first API key and get started.")
 
-            helpfulAction: QQC2.Action {
-                icon.name: "configure"
-                text: i18n("Configure Providers")
-                onTriggered: plasmoid.internalAction("configure").trigger()
+            PlasmaExtras.PlaceholderMessage {
+                anchors.fill: parent
+                visible: !fullRoot.onboardingVisible
+                iconName: "preferences-desktop-notification"
+                text: i18n("Welcome to AI Usage Monitor")
+                explanation: i18n("Track your AI API usage, costs, and rate limits across multiple providers.\nOpen settings to add your first API key and get started.")
+
+                helpfulAction: QQC2.Action {
+                    icon.name: "configure"
+                    text: i18n("Configure Providers")
+                    onTriggered: plasmoid.internalAction("configure").trigger()
+                }
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: Math.min(parent.width - Kirigami.Units.largeSpacing * 2, Kirigami.Units.gridUnit * 20)
+                radius: Kirigami.Units.smallSpacing
+                color: Kirigami.Theme.backgroundColor
+                border.width: 1
+                border.color: Kirigami.Theme.disabledTextColor
+                visible: fullRoot.onboardingVisible
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing
+                    spacing: Kirigami.Units.mediumSpacing
+
+                    PlasmaExtras.Heading {
+                        level: 4
+                        text: i18n("Set Up AI Usage Monitor")
+                        Layout.fillWidth: true
+                    }
+
+                    PlasmaComponents.Label {
+                        text: i18n("Step %1 of 3", fullRoot.onboardingStep + 1)
+                        opacity: 0.7
+                    }
+
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: {
+                            if (fullRoot.onboardingStep === 0) {
+                                return i18n("Choose at least one provider in Configure > Providers. OpenAI, Anthropic, Google, and OpenAI-compatible providers are supported.");
+                            }
+                            if (fullRoot.onboardingStep === 1) {
+                                return i18n("Add your API key for that provider. Keys are stored in KWallet and are never saved in plain text config files.");
+                            }
+                            return i18n("Return to this widget and use Refresh All. Once one provider is enabled, the live dashboard appears automatically.");
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+
+                        PlasmaComponents.Button {
+                            text: i18n("Open Provider Settings")
+                            icon.name: "configure"
+                            onClicked: plasmoid.internalAction("configure").trigger()
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        PlasmaComponents.Button {
+                            text: i18n("Not now")
+                            onClicked: {
+                                plasmoid.configuration.setupWizardDismissed = true;
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+
+                        PlasmaComponents.Button {
+                            text: i18n("Back")
+                            enabled: fullRoot.onboardingStep > 0
+                            onClicked: {
+                                fullRoot.onboardingStep = Math.max(0, fullRoot.onboardingStep - 1);
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        PlasmaComponents.Button {
+                            visible: fullRoot.onboardingStep < 2
+                            text: i18n("Next")
+                            onClicked: {
+                                fullRoot.onboardingStep = Math.min(2, fullRoot.onboardingStep + 1);
+                            }
+                        }
+
+                        PlasmaComponents.Button {
+                            visible: fullRoot.onboardingStep === 2
+                            text: i18n("Done")
+                            onClicked: {
+                                plasmoid.configuration.setupWizardCompleted = true;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -585,6 +686,10 @@ PlasmaExtras.Representation {
             || plasmoid.configuration.deepseekEnabled
             || plasmoid.configuration.groqEnabled
             || plasmoid.configuration.xaiEnabled
+            || plasmoid.configuration.openrouterEnabled
+            || plasmoid.configuration.togetherEnabled
+            || plasmoid.configuration.cohereEnabled
+            || plasmoid.configuration.googleveoEnabled
             || plasmoid.configuration.claudeCodeEnabled
             || plasmoid.configuration.codexEnabled
             || plasmoid.configuration.copilotEnabled;
@@ -913,6 +1018,10 @@ PlasmaExtras.Representation {
     }
 
     Component.onCompleted: {
+        if (hasAnyProvider()) {
+            plasmoid.configuration.setupWizardCompleted = true;
+            plasmoid.configuration.setupWizardDismissed = false;
+        }
         resetCompareMetric();
         refreshHistory();
     }

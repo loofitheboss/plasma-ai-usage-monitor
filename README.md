@@ -83,6 +83,8 @@ Optionally sync real-time usage data by reading session cookies from your Firefo
 **Enable:** Settings → Subscriptions → Browser Sync → Enable sync
 
 **Requirements:** Firefox with an active session on claude.ai and/or chatgpt.com. Chrome/Chromium is not currently supported (encrypted cookies).
+If you have multiple Firefox profiles, you can choose a specific profile in
+Settings → Subscriptions → Browser Sync.
 
 > **Warning:** This feature uses internal, undocumented APIs. It may stop working if services change their API structure. Use at your own risk.
 
@@ -150,6 +152,8 @@ sudo dnf install just   # Fedora
 | `just build-debug` | Configure + build (Debug, enables tests) |
 | `just test` | Build debug + run unit tests via ctest |
 | `just check` | Version consistency + no-hardcoded-versions checks |
+| `just doctor` | Validate install/build prerequisites |
+| `just doctor-fix` | Validate and auto-install missing Fedora deps |
 | `just versions` | Show repo / user-local / system installed versions |
 | `just clean` | Remove the `build/` directory |
 | **System-wide (sudo)** | |
@@ -161,6 +165,11 @@ sudo dnf install just   # Fedora
 | `just install-user` | `kpackagetool6 --upgrade package/` |
 | `just uninstall-user` | Remove user-local QML package |
 | `just reload` | Restart plasmashell |
+| **Bootstrap** | |
+| `just bootstrap` | Guided install (auto picks COPR on Fedora) |
+| `just bootstrap-source` | Guided source install with dependency auto-fix |
+| `just bootstrap-copr` | Guided Fedora COPR install |
+| `just bootstrap-user` | Guided user-local install + reload |
 | **COPR / DNF** | |
 | `just copr-install` | Enable COPR + `dnf install` |
 | `just copr-update` | `dnf upgrade` from COPR |
@@ -196,6 +205,33 @@ git tag v3.3.0 && git push --tags
 
 ## Installation
 
+### Guided Bootstrap (Recommended for source installs)
+
+Use the guided bootstrap script to run preflight checks and install with the
+right method:
+
+```bash
+git clone https://github.com/loofitheboss/plasma-ai-usage-monitor.git
+cd plasma-ai-usage-monitor
+./scripts/install_bootstrap.sh
+```
+
+Useful modes:
+
+```bash
+# Force source build/install
+./scripts/install_bootstrap.sh --method source --install-missing
+
+# Force user-local plasmoid-only install (no system plugin install)
+./scripts/install_bootstrap.sh --method user
+```
+
+Run only dependency checks:
+
+```bash
+./scripts/install_doctor.sh
+```
+
 ### Install from COPR (Recommended)
 
 ```bash
@@ -214,7 +250,8 @@ sudo dnf copr remove loofitheboss/plasma-ai-usage-monitor
 
 ### Quick Install (Fedora)
 
-The included `install.sh` script checks dependencies, builds, and installs everything:
+The included `install.sh` script now delegates to the guided bootstrap flow
+in source mode with Fedora dependency auto-fix enabled:
 
 ```bash
 git clone https://github.com/loofitheboss/plasma-ai-usage-monitor.git
@@ -324,6 +361,7 @@ Each provider has:
 
 - **Claude Code** — Enable/disable, plan tier (Pro/Max 5x/Max 20x), custom usage limit, notifications
 - **Codex CLI** — Enable/disable, plan tier (Plus/Pro/Business), custom usage limit, notifications
+- **Browser Sync profile** — Select a Firefox profile explicitly or use auto/default detection
 - **GitHub Copilot** — Enable/disable, plan tier (Free/Pro/Pro+/Business/Enterprise), custom limit, notifications
 - **GitHub API (optional)** — Personal access token and organization name for Copilot seat metrics
 - **Auto-detect** — Each tool shows a detection badge (detected/not found) based on installed binaries and config directories

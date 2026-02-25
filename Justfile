@@ -27,6 +27,14 @@ check:
     bash scripts/check_version_consistency.sh
     bash scripts/check_no_hardcoded_versions.sh
 
+# Validate install prerequisites (dependencies + runtime commands)
+doctor:
+    bash scripts/install_doctor.sh
+
+# Validate and install missing Fedora dependencies automatically
+doctor-fix:
+    bash scripts/install_doctor.sh --install-missing
+
 # Show installed versions: repo vs user-local vs system
 versions:
     bash scripts/show_installed_versions.sh
@@ -74,6 +82,22 @@ reload:
 
 # One-step dev iteration: install user-local package + reload plasmashell
 dev: install-user reload
+
+# Guided bootstrap installer (auto picks COPR on Fedora, source elsewhere)
+bootstrap:
+    bash scripts/install_bootstrap.sh
+
+# Guided source build/install with dependency auto-fix on Fedora
+bootstrap-source:
+    bash scripts/install_bootstrap.sh --method source --install-missing
+
+# Guided COPR installation on Fedora
+bootstrap-copr:
+    bash scripts/install_bootstrap.sh --method copr
+
+# User-local plasmoid-only install + reload (no system plugin install)
+bootstrap-user:
+    bash scripts/install_bootstrap.sh --method user
 
 # ── COPR / DNF ────────────────────────────────────────────────────────────────
 

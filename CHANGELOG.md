@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] — 2026-02-25
+
+### Added
+
+- Add `scripts/install_doctor.sh` preflight checker for required commands, Fedora package checks, and SQLite driver diagnostics
+- Add `scripts/install_bootstrap.sh` guided installer with `auto|copr|source|user` modes and dry-run support
+- Add new Just recipes for install UX: `doctor`, `doctor-fix`, `bootstrap`, `bootstrap-source`, `bootstrap-copr`, `bootstrap-user`
+- Add first-run setup wizard state in config (`setupWizardCompleted`, `setupWizardDismissed`)
+- Add first-run onboarding wizard in `FullRepresentation.qml` with step-by-step setup guidance
+- Add persisted Firefox profile selection for Browser Sync (`browserSyncProfile`) with auto/default fallback
+
+### Changed
+
+- Update `install.sh` to delegate to the guided bootstrap flow (`source` mode with dependency auto-fix)
+- Update README and CONTRIBUTING docs with guided bootstrap and doctor workflows
+- Expand `hasAnyProvider()` checks to include OpenRouter, Together AI, Cohere, and Google Veo for correct empty-state behavior
+- Improve Browser Sync settings UX with profile reload and safer fallback when saved profiles disappear
+
 ## [3.2.0] — 2026-02-22
 
 ### Added
@@ -276,7 +294,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KWallet integration for secure API key storage
 - KDE notifications for rate limit warnings
 
-[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v2.9.0...v3.0.0
