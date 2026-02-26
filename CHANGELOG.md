@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Horizon dashboard overview strip in full view with KPI tiles for providers, connectivity, total cost, and tool monitors
+- Add provider section header with connected/enabled status badge and targeted empty-state guidance when providers are enabled but disconnected
+
+### Changed
+
+- Redesign full dashboard live layout grouping for clearer scanability before provider and subscription cards
+- Improve theme-awareness of provider and subscription cards by using adaptive tinted surfaces and state-aware borders (connected/error/limit)
+
 ## [3.6.0] — 2026-02-26
 
 ### Added

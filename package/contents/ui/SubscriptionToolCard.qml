@@ -28,12 +28,13 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: toolContent.implicitHeight + Kirigami.Units.largeSpacing * 2
         radius: Kirigami.Units.cornerRadius
-        color: {
-            var base = Kirigami.Theme.backgroundColor;
-            return Qt.darker(base, 1.05);
-        }
+        color: Qt.tint(Kirigami.Theme.backgroundColor, Qt.alpha(toolCard.toolColor, 0.035))
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        border.color: {
+            if (!(toolCard.monitor?.installed ?? false)) return Qt.alpha(Kirigami.Theme.textColor, 0.12);
+            if (toolCard.monitor?.limitReached ?? false) return Qt.alpha(Kirigami.Theme.negativeTextColor, 0.3);
+            return Qt.alpha(toolCard.toolColor, 0.24);
+        }
 
         Accessible.role: Accessible.Grouping
         Accessible.name: {

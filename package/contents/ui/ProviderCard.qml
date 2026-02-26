@@ -25,12 +25,13 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: cardContent.implicitHeight + Kirigami.Units.largeSpacing * 2
         radius: Kirigami.Units.cornerRadius
-        color: {
-            var base = Kirigami.Theme.backgroundColor;
-            return Qt.darker(base, 1.05);
-        }
+        color: Qt.tint(Kirigami.Theme.backgroundColor, Qt.alpha(Kirigami.Theme.highlightColor, 0.03))
         border.width: 1
-        border.color: Qt.alpha(Kirigami.Theme.textColor, 0.1)
+        border.color: {
+            if (card.backend?.error) return Qt.alpha(Kirigami.Theme.negativeTextColor, 0.3);
+            if (card.backend?.connected) return Qt.alpha(card.providerColor, 0.28);
+            return Qt.alpha(Kirigami.Theme.textColor, 0.12);
+        }
 
         Accessible.role: Accessible.Grouping
         Accessible.name: {
