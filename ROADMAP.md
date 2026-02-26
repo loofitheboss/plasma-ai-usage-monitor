@@ -1,6 +1,6 @@
 # Roadmap — Plasma AI Usage Monitor
 
-> **Current version:** v3.5.3 (Release plasmoid packaging stability hotfix)
+> **Current version:** v3.6.0 (Azure OpenAI provider backend + UI wiring)
 > **Last updated:** 2026-02-26
 
 ---
@@ -9,6 +9,7 @@
 
 | Version | Codename | Theme | Status |
 |---------|----------|-------|--------|
+| v3.6.0 | **Pulse** | Azure OpenAI Provider Wiring | Released |
 | v3.5.3 | **Pulse** | Release Plasmoid Packaging Stability Hotfix (ZIP timestamp clamp) | Released |
 | v3.5.2 | **Pulse** | Release Packaging Stability Hotfix (deterministic tarballing) | Released |
 | v3.5.1 | **Pulse** | Release Workflow Hotfix (AppStream icon validation) | Released |
@@ -292,6 +293,7 @@
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v3.6.0 | 2026-02-26 | Azure OpenAI provider backend dispatch + normalization, provider test coverage, and full UI/config wiring (providers, alerts, budgets) |
 | v3.5.2 | 2026-02-26 | Source tarball packaging switched to tracked-file archiving to prevent CI tar race failures in release workflow |
 | v3.5.1 | 2026-02-26 | AppStream metainfo icon validation hotfix to unblock GitHub release workflow |
 | v3.5.0 | 2026-02-26 | Flatpak scaffold validation hardening, packaging consistency checks added to build/release workflows, deterministic packaging check baseline documented |

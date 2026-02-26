@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] — 2026-02-26
+
 ### Added
 
+- Add backend provider dispatch plumbing for Azure OpenAI with deterministic key mapping and fallback handling
+- Add mocked/backend provider tests for Azure selection, normalization, and failure-safe parsing
 - Add Azure OpenAI provider configuration UI and runtime wiring (`configProviders.qml`, `main.qml`, `main.xml`)
 - Add Azure-specific API key handling via KWallet key slot `azure`
 
@@ -355,7 +359,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KWallet integration for secure API key storage
 - KDE notifications for rate limit warnings
 
-[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.3...HEAD
+[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.6.0...HEAD
+[3.6.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.3...v3.6.0
 [3.5.3]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.0...v3.5.1
