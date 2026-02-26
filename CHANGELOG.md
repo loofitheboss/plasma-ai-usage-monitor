@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add deterministic local packaging scripts for source tarball and `.plasmoid` archive generation
 - Add Flatpak scaffold validation script for CI and local checks
 - Add mocked HTTP coverage for `GoogleVeoProvider` (tier fallback, header limits, auth failure)
+- Add real Plasma widget screenshots under `assets/screenshots/` (main, panel, settings-oriented)
 
 ### Changed
 
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update release workflow to generate source/plasmoid artifacts via packaging scripts
 - Improve `GoogleVeoProvider` success-path handling with response validation and request counting
 - Prefer API-provided rate-limit headers for Google Veo when available, with known-limit fallback
+- Replace README screenshot placeholder with actual captures and add walkthrough doc link
 
 ## [3.4.0] — 2026-02-26
 

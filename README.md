@@ -109,11 +109,19 @@ Settings → Subscriptions → Browser Sync.
 
 ## Screenshots
 
-*Screenshots coming soon — the widget is functional and can be added to any Plasma 6 panel or desktop.*
+Real widget captures from the Fedora KDE container workflow:
 
-<p align="center">
-  <img src="assets/logo.png" alt="Plasma AI Monitor Logo" width="128" />
-</p>
+### Main window
+
+![Plasma AI Usage Monitor main window](assets/screenshots/main-window.png)
+
+### Panel/compact view
+
+![Plasma AI Usage Monitor panel view](assets/screenshots/panel-view.png)
+
+### Settings-oriented view
+
+![Plasma AI Usage Monitor settings-oriented view](assets/screenshots/settings-view.png)
 
 ## Requirements
 
@@ -564,6 +572,7 @@ Check that the History tab is enabled in configuration. Data is stored in `~/.lo
 | [CHANGELOG.md](CHANGELOG.md) | Full version history from v1.0.0 to present |
 | [SECURITY.md](SECURITY.md) | Security policy, vulnerability reporting, and design decisions |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, coding standards, and contribution workflow |
+| [docs/walkthrough.md](docs/walkthrough.md) | Sprint notes and walkthrough context |
 
 ## Changelog
 
