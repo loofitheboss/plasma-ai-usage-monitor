@@ -531,15 +531,17 @@ rpmbuild -ba plasma-ai-usage-monitor.spec
 
 ## Packaging Kickoff (Flatpak + Deterministic Local Artifacts)
 
-- Minimal Flatpak scaffold added at `packaging/flatpak/com.github.loofi.aiusagemonitor.yaml`
+- Canonical Flatpak manifest at `packaging/flatpak/com.github.loofi.aiusagemonitor.yaml`
 - Deterministic local packaging scripts:
   - `scripts/package_source_tarball.sh`
   - `scripts/package_plasmoid.sh`
   - `scripts/check_flatpak_scaffold.sh`
+- Packaging validation now checks manifest identity/runtime fields and version consistency with project metadata in CI/release workflows.
 
 Quick checks:
 
 ```bash
+bash scripts/check_version_consistency.sh
 bash scripts/check_flatpak_scaffold.sh
 bash scripts/package_source_tarball.sh --check
 bash scripts/package_plasmoid.sh --check

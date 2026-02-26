@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] — 2026-02-26
+
 ### Added
 
 - Add minimal Flatpak scaffold under `packaging/flatpak/` for distribution kickoff
@@ -17,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update build workflow to run packaging validation checks
+- Strengthen Flatpak scaffold validation to enforce manifest core fields and metadata/CMake version identity checks
+- Update build and release workflows to run full packaging consistency checks (`check_version_consistency`, Flatpak scaffold, source/plasmoid check mode)
 - Update release workflow to generate source/plasmoid artifacts via packaging scripts
 - Improve `GoogleVeoProvider` success-path handling with response validation and request counting
 - Prefer API-provided rate-limit headers for Google Veo when available, with known-limit fallback
@@ -325,7 +328,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KWallet integration for secure API key storage
 - KDE notifications for rate limit warnings
 
-[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.1.0...v3.2.0

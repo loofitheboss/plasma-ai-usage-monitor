@@ -55,6 +55,13 @@ jobs:
         run: |
           bash scripts/package_plasmoid.sh --output-dir .
 
+      - name: Validate packaging consistency
+        run: |
+          bash scripts/check_version_consistency.sh
+          bash scripts/check_flatpak_scaffold.sh
+          bash scripts/package_source_tarball.sh --check
+          bash scripts/package_plasmoid.sh --check
+
       - name: Generate release notes
         id: notes
         shell: bash
