@@ -20,6 +20,11 @@ KCM.SimpleKCM {
     property alias cfg_openaiProjectId: openaiProjectField.text
     property alias cfg_openaiCustomBaseUrl: openaiBaseUrlField.text
 
+    property alias cfg_azureEnabled: azureSwitch.checked
+    property alias cfg_azureModel: azureModelField.text
+    property alias cfg_azureDeploymentId: azureDeploymentField.text
+    property alias cfg_azureCustomBaseUrl: azureBaseUrlField.text
+
     property alias cfg_anthropicEnabled: anthropicSwitch.checked
     property alias cfg_anthropicModel: anthropicModelField.text
     property alias cfg_anthropicCustomBaseUrl: anthropicBaseUrlField.text
@@ -74,6 +79,7 @@ KCM.SimpleKCM {
     property bool togetherKeyDirty: false
     property bool cohereKeyDirty: false
     property bool googleveoKeyDirty: false
+    property bool azureKeyDirty: false
 
     // ── KWallet Integration ──
     SecretsManager {
@@ -106,7 +112,8 @@ KCM.SimpleKCM {
             { name: "openrouter", field: openrouterKeyField, dirtyProp: "openrouterKeyDirty" },
             { name: "together", field: togetherKeyField, dirtyProp: "togetherKeyDirty" },
             { name: "cohere", field: cohereKeyField, dirtyProp: "cohereKeyDirty" },
-            { name: "googleveo", field: googleveoKeyField, dirtyProp: "googleveoKeyDirty" }
+            { name: "googleveo", field: googleveoKeyField, dirtyProp: "googleveoKeyDirty" },
+            { name: "azure", field: azureKeyField, dirtyProp: "azureKeyDirty" }
         ];
 
         for (var i = 0; i < providers.length; i++) {
@@ -132,7 +139,8 @@ KCM.SimpleKCM {
             { name: "openrouter", field: openrouterKeyField, dirty: openrouterKeyDirty },
             { name: "together", field: togetherKeyField, dirty: togetherKeyDirty },
             { name: "cohere", field: cohereKeyField, dirty: cohereKeyDirty },
-            { name: "googleveo", field: googleveoKeyField, dirty: googleveoKeyDirty }
+            { name: "googleveo", field: googleveoKeyField, dirty: googleveoKeyDirty },
+            { name: "azure", field: azureKeyField, dirty: azureKeyDirty }
         ];
 
         for (var i = 0; i < providers.length; i++) {
@@ -256,6 +264,108 @@ KCM.SimpleKCM {
 
         QQC2.Label {
             visible: openaiBaseUrlField.text.toLowerCase().startsWith("http://")
+            text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        // ══════════════════════════════════════════════
+        // ── Azure OpenAI ──
+        // ══════════════════════════════════════════════
+
+        Kirigami.Separator {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: i18n("Azure OpenAI")
+        }
+
+        QQC2.Switch {
+            id: azureSwitch
+            Kirigami.FormData.label: i18n("Enable:")
+            checked: plasmoid.configuration.azureEnabled
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: i18n("API Key:")
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.TextField {
+                id: azureKeyField
+                enabled: azureSwitch.checked
+                echoMode: azureKeyVisible.checked ? TextInput.Normal : TextInput.Password
+                placeholderText: i18n("Enter Azure OpenAI API key...")
+                Layout.fillWidth: true
+                onTextEdited: providersPage.azureKeyDirty = true
+            }
+
+            QQC2.ToolButton {
+                id: azureKeyVisible
+                checkable: true; checked: false
+                icon.name: checked ? "password-show-off" : "password-show-on"
+                display: QQC2.AbstractButton.IconOnly
+                QQC2.ToolTip.text: checked ? i18n("Hide key") : i18n("Show key")
+                QQC2.ToolTip.visible: hovered
+            }
+
+            QQC2.ToolButton {
+                icon.name: "edit-clear"
+                enabled: azureKeyField.text.length > 0
+                display: QQC2.AbstractButton.IconOnly
+                QQC2.ToolTip.text: i18n("Clear key"); QQC2.ToolTip.visible: hovered
+                onClicked: { azureKeyField.text = ""; providersPage.azureKeyDirty = true; }
+            }
+        }
+
+        QQC2.Label {
+            visible: azureSwitch.checked
+            text: i18n("Use your Azure OpenAI resource endpoint and deployment for monitoring")
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            opacity: 0.6; wrapMode: Text.WordWrap; Layout.fillWidth: true
+        }
+
+        QQC2.TextField {
+            id: azureModelField
+            Kirigami.FormData.label: i18n("Model filter:")
+            enabled: azureSwitch.checked
+            text: plasmoid.configuration.azureModel
+            placeholderText: "gpt-4o"
+            Layout.fillWidth: true
+        }
+
+        QQC2.TextField {
+            id: azureDeploymentField
+            Kirigami.FormData.label: i18n("Deployment ID:")
+            enabled: azureSwitch.checked
+            text: plasmoid.configuration.azureDeploymentId
+            placeholderText: i18n("my-deployment")
+            Layout.fillWidth: true
+        }
+
+        QQC2.TextField {
+            id: azureBaseUrlField
+            Kirigami.FormData.label: i18n("Endpoint base URL:")
+            enabled: azureSwitch.checked
+            text: plasmoid.configuration.azureCustomBaseUrl
+            placeholderText: i18n("https://<resource>.openai.azure.com")
+            Layout.fillWidth: true
+            QQC2.ToolTip.text: i18n("Azure endpoint base URL. Must start with https://")
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: 500
+        }
+
+        QQC2.Label {
+            visible: providersPage.isInvalidUrl(azureBaseUrlField.text)
+            text: i18n("⚠ URL must start with https:// or http://")
+            color: Kirigami.Theme.negativeTextColor
+            font.pointSize: Kirigami.Theme.smallFont.pointSize
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        QQC2.Label {
+            visible: azureBaseUrlField.text.toLowerCase().startsWith("http://")
             text: i18n("⚠ Using HTTP is insecure. API keys will be sent unencrypted.")
             color: Kirigami.Theme.negativeTextColor
             font.pointSize: Kirigami.Theme.smallFont.pointSize

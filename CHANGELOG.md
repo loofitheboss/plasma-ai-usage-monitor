@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Azure OpenAI provider configuration UI and runtime wiring (`configProviders.qml`, `main.qml`, `main.xml`)
+- Add Azure-specific API key handling via KWallet key slot `azure`
+
+### Changed
+
+- Extend Alerts and Budget config pages with Azure OpenAI toggles and per-provider budget controls
+
 ## [3.5.3] — 2026-02-26
 
 ### Fixed

@@ -57,6 +57,9 @@
         <entry name="googleveoRefreshInterval" type="Int">
             <default>0</default>
         </entry>
+        <entry name="azureRefreshInterval" type="Int">
+            <default>0</default>
+        </entry>
     </group>
 
     <group name="Providers">
@@ -71,6 +74,20 @@
             <default></default>
         </entry>
         <entry name="openaiCustomBaseUrl" type="String">
+            <default></default>
+        </entry>
+
+        <!-- Azure OpenAI -->
+        <entry name="azureEnabled" type="Bool">
+            <default>false</default>
+        </entry>
+        <entry name="azureModel" type="String">
+            <default>gpt-4o</default>
+        </entry>
+        <entry name="azureDeploymentId" type="String">
+            <default></default>
+        </entry>
+        <entry name="azureCustomBaseUrl" type="String">
             <default></default>
         </entry>
 
@@ -262,6 +279,9 @@
         <entry name="googleveoNotificationsEnabled" type="Bool">
             <default>true</default>
         </entry>
+        <entry name="azureNotificationsEnabled" type="Bool">
+            <default>true</default>
+        </entry>
 
         <!-- Update notifications -->
         <entry name="notifyOnUpdate" type="Bool">
@@ -341,6 +361,12 @@
             <default>0</default>
         </entry>
         <entry name="googleveoMonthlyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="azureDailyBudget" type="Int">
+            <default>0</default>
+        </entry>
+        <entry name="azureMonthlyBudget" type="Int">
             <default>0</default>
         </entry>
         <entry name="budgetWarningPercent" type="Int">

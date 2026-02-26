@@ -42,6 +42,7 @@ PlasmoidItem {
     property alias together: togetherBackend
     property alias cohere: cohereBackend
     property alias googleveo: googleveoBackend
+    property alias azure: azureBackend
     property alias usageDb: usageDatabase
 
     // Subscription tool monitors
@@ -82,6 +83,16 @@ PlasmoidItem {
         customBaseUrl: plasmoid.configuration.openaiCustomBaseUrl
         dailyBudget: plasmoid.configuration.openaiDailyBudget / 100.0
         monthlyBudget: plasmoid.configuration.openaiMonthlyBudget / 100.0
+        budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
+    }
+
+    AzureOpenAIProvider {
+        id: azureBackend
+        model: plasmoid.configuration.azureModel
+        projectId: plasmoid.configuration.azureDeploymentId
+        customBaseUrl: plasmoid.configuration.azureCustomBaseUrl
+        dailyBudget: plasmoid.configuration.azureDailyBudget / 100.0
+        monthlyBudget: plasmoid.configuration.azureMonthlyBudget / 100.0
         budgetWarningPercent: plasmoid.configuration.budgetWarningPercent
     }
 
@@ -466,6 +477,15 @@ PlasmoidItem {
             if (googleveoBackend.hasApiKey()) googleveoBackend.refresh();
         }
     }
+    Timer {
+        id: azureRefreshTimer
+        interval: effectiveInterval(plasmoid.configuration.azureRefreshInterval)
+        running: plasmoid.configuration.azureEnabled
+        repeat: true
+        onTriggered: {
+            if (azureBackend.hasApiKey()) azureBackend.refresh();
+        }
+    }
 
     // Daily prune timer (runs once every 24h)
     Timer {
@@ -508,7 +528,8 @@ PlasmoidItem {
         { name: "OpenRouter", dbName: "OpenRouter", configKey: "openrouter", backend: openrouterBackend, enabled: plasmoid.configuration.openrouterEnabled, color: "#6366F1" },
         { name: "Together AI", dbName: "Together", configKey: "together", backend: togetherBackend, enabled: plasmoid.configuration.togetherEnabled, color: "#0EA5E9" },
         { name: "Cohere", dbName: "Cohere", configKey: "cohere", backend: cohereBackend, enabled: plasmoid.configuration.cohereEnabled, color: "#39D353" },
-        { name: "Google Veo", dbName: "GoogleVeo", configKey: "googleveo", backend: googleveoBackend, enabled: plasmoid.configuration.googleveoEnabled, color: "#EA4335" }
+        { name: "Google Veo", dbName: "GoogleVeo", configKey: "googleveo", backend: googleveoBackend, enabled: plasmoid.configuration.googleveoEnabled, color: "#EA4335" },
+        { name: "Azure OpenAI", dbName: "AzureOpenAI", configKey: "azure", backend: azureBackend, enabled: plasmoid.configuration.azureEnabled, color: "#0078D4" }
     ]
 
     readonly property var allSubscriptionTools: [
@@ -841,6 +862,7 @@ PlasmoidItem {
         function onGroqEnabledChanged() { loadApiKeys(); }
         function onXaiEnabledChanged() { loadApiKeys(); }
         function onGoogleveoEnabledChanged() { loadApiKeys(); }
+        function onAzureEnabledChanged() { loadApiKeys(); }
         function onBrowserSyncProfileChanged() {
             browserCookies.selectedFirefoxProfile = plasmoid.configuration.browserSyncProfile;
         }
@@ -853,6 +875,8 @@ PlasmoidItem {
         function onGroqModelChanged() { groqBackend.model = plasmoid.configuration.groqModel; }
         function onXaiModelChanged() { xaiBackend.model = plasmoid.configuration.xaiModel; }
         function onGoogleveoModelChanged() { googleveoBackend.model = plasmoid.configuration.googleveoModel; }
+        function onAzureModelChanged() { azureBackend.model = plasmoid.configuration.azureModel; }
+        function onAzureDeploymentIdChanged() { azureBackend.projectId = plasmoid.configuration.azureDeploymentId; }
 
         function onRefreshIntervalChanged() {
             // The per-provider Timer declarations use declarative bindings

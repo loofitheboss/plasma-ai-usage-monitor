@@ -32,7 +32,7 @@
 |---------|-------------|----------|
 | **Google Veo** | Video generation API monitoring — token/frame usage, cost estimation (provider file already scaffolded as `googleveoprovider.cpp`) | High |
 | **AWS Bedrock** | Monitor cross-model usage via Bedrock billing API (Claude, Llama, Mistral, Titan on AWS) | High |
-| **Azure OpenAI** | Track Azure-hosted OpenAI deployments — separate from openai.com billing, uses Azure metering API | Medium |
+| **Azure OpenAI** | Track Azure-hosted OpenAI deployments — separate from openai.com billing, uses Azure metering API *(Backend + UI wiring completed in 3.5.x; metering endpoint refinements pending)* | Medium |
 | **Perplexity AI** | OpenAI-compatible API with search credits tracking | Medium |
 | **Fireworks AI** | Serverless inference — OpenAI-compatible, credit balance endpoint | Low |
 
