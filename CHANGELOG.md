@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.1] — 2026-02-26
+
+### Fixed
+
+- Fix AppStream metainfo validation by switching to a valid stock icon name (`utilities-system-monitor`) for release workflow compatibility
+
 ## [3.5.0] — 2026-02-26
 
 ### Added
@@ -328,7 +334,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KWallet integration for secure API key storage
 - KDE notifications for rate limit warnings
 
-[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.1...HEAD
+[3.5.1]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.2.0...v3.3.0
