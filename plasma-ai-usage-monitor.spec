@@ -1,5 +1,5 @@
 Name:           plasma-ai-usage-monitor
-Version:        3.6.0
+Version:        3.7.0
 Release:        1%{?dist}
 Summary:        KDE Plasma 6 widget to monitor AI API token usage, rate limits, and costs
 License:        GPL-3.0-or-later
@@ -67,6 +67,12 @@ appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/com.githu
 %{_datadir}/metainfo/com.github.loofi.aiusagemonitor.metainfo.xml
 
 %changelog
+* Thu Feb 26 2026 Loofi <loofi@github.com> - 3.7.0-1
+- Add Horizon dashboard overview strip in full view with KPI tiles for providers, connectivity, total cost, and tool monitors
+- Add provider section header with connected/enabled status badge and targeted empty-state guidance
+- Redesign full dashboard live layout grouping for clearer scanability before provider and subscription cards
+- Improve provider/subscription card theme adaptation with state-aware tinted surfaces and borders
+
 * Thu Feb 26 2026 Loofi <loofi@github.com> - 3.4.0-1
 - Add GitHub Copilot activity auto-detection using IDE state/log paths (Code, VSCodium, Code OSS)
 - Add Copilot activity baseline and incremental usage tracking tests

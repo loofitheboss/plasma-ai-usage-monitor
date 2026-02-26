@@ -143,6 +143,7 @@ libplasma-devel
 kf6-kwallet-devel
 kf6-ki18n-devel
 kf6-knotifications-devel
+kf6-kcoreaddons-devel
 ```
 
 ## Development Workflow
@@ -183,7 +184,7 @@ sudo dnf install just   # Fedora
 | `just copr-update` | `dnf upgrade` from COPR |
 | `just copr-remove` | Remove package + COPR repo |
 | **Version** | |
-| `just bump VERSION=3.4.0` | Bump version in all 4 files atomically |
+| `just bump VERSION=3.7.0` | Bump version in all 4 files atomically |
 
 **Typical dev loop (QML changes):**
 
@@ -203,10 +204,10 @@ just reload
 **Release a new version:**
 
 ```bash
-just bump VERSION=3.4.0
+just bump VERSION=3.7.0
 # Update CHANGELOG.md, then:
-git commit -am "chore: bump version to v3.4.0"
-git tag v3.4.0 && git push --tags
+git commit -am "chore: bump version to v3.7.0"
+git tag v3.7.0 && git push --tags
 ```
 
 ---
@@ -274,7 +275,8 @@ chmod +x install.sh
 # Install build dependencies (Fedora)
 sudo dnf install cmake extra-cmake-modules gcc-c++ \
     qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-sql \
-    libplasma-devel kf6-kwallet-devel kf6-ki18n-devel kf6-knotifications-devel
+    libplasma-devel kf6-kwallet-devel kf6-ki18n-devel kf6-knotifications-devel \
+    kf6-kcoreaddons-devel
 
 # Build
 mkdir build && cd build
@@ -389,7 +391,7 @@ Each provider has:
 
 ```text
 plasma-ai-usage-monitor/
-├── CMakeLists.txt                  # Root build system (v3.4.0)
+├── CMakeLists.txt                  # Root build system (v3.7.0)
 ├── install.sh                      # Build & install script
 ├── plasma-ai-usage-monitor.spec    # RPM packaging spec
 ├── plasma_applet_...notifyrc       # KDE notification events

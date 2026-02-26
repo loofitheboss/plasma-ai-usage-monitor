@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] — 2026-02-26
+
 ### Added
 
 - Add Horizon dashboard overview strip in full view with KPI tiles for providers, connectivity, total cost, and tool monitors
@@ -369,7 +371,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - KWallet integration for secure API key storage
 - KDE notifications for rate limit warnings
 
-[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.6.0...HEAD
+[Unreleased]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.7.0...HEAD
+[3.7.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.6.0...v3.7.0
 [3.6.0]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.3...v3.6.0
 [3.5.3]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/loofitheboss/plasma-ai-usage-monitor/compare/v3.5.1...v3.5.2
