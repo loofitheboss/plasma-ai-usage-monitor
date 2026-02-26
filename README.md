@@ -521,6 +521,22 @@ An RPM spec file is included for Fedora/RHEL packaging:
 rpmbuild -ba plasma-ai-usage-monitor.spec
 ```
 
+## Packaging Kickoff (Flatpak + Deterministic Local Artifacts)
+
+- Minimal Flatpak scaffold added at `packaging/flatpak/com.github.loofi.aiusagemonitor.yaml`
+- Deterministic local packaging scripts:
+  - `scripts/package_source_tarball.sh`
+  - `scripts/package_plasmoid.sh`
+  - `scripts/check_flatpak_scaffold.sh`
+
+Quick checks:
+
+```bash
+bash scripts/check_flatpak_scaffold.sh
+bash scripts/package_source_tarball.sh --check
+bash scripts/package_plasmoid.sh --check
+```
+
 ## Troubleshooting
 
 **Widget doesn't appear after install:**

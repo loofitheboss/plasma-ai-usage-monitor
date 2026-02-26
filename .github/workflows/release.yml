@@ -49,17 +49,11 @@ jobs:
           else
             VERSION=dev-${GITHUB_SHA::7}
           fi
-          STAGE=/tmp/plasma-ai-usage-monitor-${VERSION}
-          rm -rf "${STAGE}"
-          mkdir -p "${STAGE}"
-          cp -a . "${STAGE}/"
-          rm -rf "${STAGE}/.git" "${STAGE}/build"
-          tar -C /tmp -czf "plasma-ai-usage-monitor-${VERSION}.tar.gz" "plasma-ai-usage-monitor-${VERSION}"
+          bash scripts/package_source_tarball.sh --version "${VERSION}" --output-dir .
 
       - name: Build .plasmoid archive
         run: |
-          cd package
-          zip -r ../com.github.loofi.aiusagemonitor.plasmoid .
+          bash scripts/package_plasmoid.sh --output-dir .
 
       - name: Generate release notes
         id: notes
