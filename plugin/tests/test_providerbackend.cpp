@@ -47,6 +47,7 @@ private Q_SLOTS:
     void testProviderKeyEnumConversionAzure();
     void testProviderKeyEnumConversionAzureAliases();
     void testProviderConfigFallbackUnknownDeterministic();
+    void testGoogleVeoNormalizationUsesOpenAiLikeUsage();
     void testExistingProviderMappingsUnchanged();
     void testBudgetWarningSignal();
     void testBudgetExceededSignal();
@@ -135,6 +136,26 @@ void ProviderBackendTest::testProviderConfigFallbackUnknownDeterministic()
     QCOMPARE(normalized.inputTokens, 0);
     QCOMPARE(normalized.outputTokens, 0);
     QCOMPARE(normalized.requestCount, 0);
+    QCOMPARE(normalized.cost, 0.0);
+}
+
+void ProviderBackendTest::testGoogleVeoNormalizationUsesOpenAiLikeUsage()
+{
+    QJsonObject usage;
+    usage.insert(QStringLiteral("prompt_tokens"), 111);
+    usage.insert(QStringLiteral("completion_tokens"), 22);
+    usage.insert(QStringLiteral("total_tokens"), 133);
+
+    QJsonObject payload;
+    payload.insert(QStringLiteral("usage"), usage);
+
+    const ProviderBackend::NormalizedUsageCost normalized =
+        ProviderBackend::normalizeUsageCost(ProviderBackend::ProviderId::GoogleVeo, payload);
+
+    QVERIFY(normalized.parsed);
+    QCOMPARE(normalized.inputTokens, 111);
+    QCOMPARE(normalized.outputTokens, 22);
+    QCOMPARE(normalized.requestCount, 1);
     QCOMPARE(normalized.cost, 0.0);
 }
 

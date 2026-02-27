@@ -104,14 +104,48 @@ void GoogleVeoProvider::onModelInfoReply(QNetworkReply *reply)
         return;
     }
 
-    // Prefer provider-provided rate-limit headers when available.
+    // Reset limits first so partial headers cannot leave stale values from prior refreshes.
+    setRateLimitRequests(0);
+    setRateLimitRequestsRemaining(0);
+    setRateLimitTokens(0);
+    setRateLimitTokensRemaining(0);
+    setRateLimitResetTime(QString());
+
+    // Prefer provider-provided rate-limit headers when both request-limit and remaining are present.
+    const bool hasRequestLimitHeader = !reply->rawHeader("x-ratelimit-limit-requests").isEmpty();
+    const bool hasRequestRemainingHeader = !reply->rawHeader("x-ratelimit-remaining-requests").isEmpty();
     parseRateLimitHeaders(reply);
-    if (rateLimitRequests() <= 0) {
+    if (!(hasRequestLimitHeader && hasRequestRemainingHeader) || rateLimitRequests() <= 0) {
         applyKnownLimits();
     }
 
-    // The model endpoint call itself counts as one API request in this refresh cycle.
-    setRequestCount(1);
+    const ProviderBackend::NormalizedUsageCost normalized =
+        ProviderBackend::normalizeUsageCost(ProviderBackend::ProviderId::GoogleVeo, doc.object());
+
+    if (normalized.parsed) {
+        setInputTokens(normalized.inputTokens);
+        setOutputTokens(normalized.outputTokens);
+        setRequestCount(qMax(1, normalized.requestCount));
+
+        if (normalized.cost > 0.0) {
+            setCost(normalized.cost);
+            setDailyCost(normalized.dailyCost > 0.0 ? normalized.dailyCost : normalized.cost);
+            setMonthlyCost(normalized.monthlyCost > 0.0 ? normalized.monthlyCost : normalized.cost);
+        } else {
+            setCost(0.0);
+            updateEstimatedCost(m_model);
+            setDailyCost(cost());
+            setMonthlyCost(cost());
+        }
+    } else {
+        // Connectivity-only path for model-info endpoint.
+        setInputTokens(0);
+        setOutputTokens(0);
+        setRequestCount(1);
+        setCost(0.0);
+        setDailyCost(0.0);
+        setMonthlyCost(0.0);
+    }
 
     setConnected(true);
     setLoading(false);

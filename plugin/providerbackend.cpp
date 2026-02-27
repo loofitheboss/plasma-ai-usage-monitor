@@ -134,11 +134,11 @@ ProviderBackend::NormalizedUsageCost ProviderBackend::normalizeUsageCost(Provide
     case ProviderId::OpenRouter:
     case ProviderId::Together:
     case ProviderId::Cohere:
+    case ProviderId::GoogleVeo:
     case ProviderId::AzureOpenAI:
         return normalizeOpenAiLikeUsage(payload);
     case ProviderId::Anthropic:
     case ProviderId::Google:
-    case ProviderId::GoogleVeo:
     case ProviderId::Unknown:
     default:
         return NormalizedUsageCost{};
